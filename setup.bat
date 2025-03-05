@@ -13,7 +13,7 @@ call venv\Scripts\activate
 echo Upgrading pip...
 python -m pip install --upgrade pip setuptools wheel
 
-:: Install dependencies with progress bar
+:: Install dependencies in pip with progress bar
 echo Installing dependencies...
 pip install --progress-bar=on -r requirements.txt
 

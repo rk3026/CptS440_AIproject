@@ -8,3 +8,4 @@ dash
 plotly
 ipykernel
 jupyter
+transformers #for Hugging Face Models
