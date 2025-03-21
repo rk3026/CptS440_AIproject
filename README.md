@@ -11,6 +11,10 @@ If you haven’t already, clone this repository to your local machine using Git:
 
 ```bash
 git clone https://github.com/your-username/CptS440_AIproject.git
+```
+
+Then navigate to the folder:
+```bash
 cd CptS440_AIproject
 ```
 
@@ -30,4 +34,4 @@ Run the appropriate setup script based on your operating system:
 This will create a **virtual environment** with all the necessary dependencies listed in `requirements.txt`.
 
 ### 3. Running the Project
-After setup, you can run the **Jupyter notebooks** or Python scripts to analyze sentiment from various datasets.
+After setup, you can run the **Jupyter notebooks** or Python scripts to analyze sentiment from various datasets. To run the web app, run the web_app.bat or web_app.sh file.
