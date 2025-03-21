@@ -9,3 +9,8 @@ plotly
 ipykernel
 jupyter
 transformers #for Hugging Face Models
+
+#fine-tuning:
+datasets
+evaluate
+accelerate
