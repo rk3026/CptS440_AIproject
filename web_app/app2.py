@@ -1,5 +1,3 @@
-import dash
-from dash import dcc, html
 from dash.dependencies import Input, Output
 from transformers import pipeline
 import plotly.graph_objects as go
@@ -8,7 +6,7 @@ import pandas as pd
 import csv
 import os
 
-from dash import Dash, html, dcc, Input, Output, State
+from dash import Dash, html, dcc, Input, Output, State, dash_table
 import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.express as px  # Assuming you're using Plotly for charts
@@ -21,6 +19,10 @@ models = {
     "Yelp BERT": pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment"),
     #"xlnet-base-cased": pipeline("sentiment-analysis", model="xlnet-base-cased"),
     #"t5-small": pipeline("text2text-generation", model="t5-small")
+    "llama3": "x",
+    "deepseek": "y",
+    "GPT-90": "z"
+    
 }
 
 # Sample Data (Replace these with your actual data)
@@ -55,6 +57,8 @@ server = app.server
 # Define the layout of the app
 app.layout = html.Div([
     dbc.Container([
+        
+        # Different Tabs
         dbc.Row([
             dbc.Col(html.Img(src="./assets/logo.png", width=150), width=2),
             dbc.Col(
@@ -65,6 +69,59 @@ app.layout = html.Div([
                 ], style={'marginTop': '15px', 'width': '600px', 'height': '50px'})
             , width=6),
         ]),
+
+        # Text input for user to enter text
+        dbc.Row([
+            
+            dcc.Textarea(
+                id="input-text",
+                value="Enter text for sentiment analysis",
+                style={'marginTop': '15px','width': '50%', 'height': 100}
+            ),
+            
+            # Checkboxes for selecting models
+            dcc.Checklist(
+                id="model-selection",
+                options=[{'label': model, 'value': model} for model in models.keys()],
+                value=[" Twitter RoBERTa", " Yelp BERT"," llama3"," deepseek"," GPT-90"],  # Default models
+                style={'marginTop': '20px',
+                       'display': 'flex',  # Use flexbox layout
+                       'flex-wrap': 'wrap',  # Allow the items to wrap to the next line
+                       'gap': '20px',  # Add space between the checkboxes
+                       'width': '300px'  # Set a width to control the number of items in each row (3 items in this case)
+                       }
+            )
+        ]),
+        
+        dbc.Row([
+            # Button to trigger analysis
+            html.Button("Analyze", id="analyze-btn", n_clicks=0),
+            
+            # Dropdown to select previous test case results
+            dcc.Dropdown(
+                id="previous-results-dropdown",
+                options=[{'label': f"Test Case Set {i+1}", 'value': i+1} for i in range(2)],
+                placeholder="Select previous test case results"
+            ),
+
+        ]),
+
+        # Scrollable DataTable with top margin
+        dbc.Row([  
+            dash_table.DataTable(
+                data=df.to_dict('records'),
+                page_size=10,
+                style_table={
+                    'marginTop': '20px',  # Add top margin
+                    'height': '300px',  # Set a fixed height
+                    'overflowY': 'auto',  # Enable vertical scrolling
+                    'width': '100%'  # Ensures it takes up full width
+                }
+            ),
+        ]),
+
+
+
         dbc.Row([  
             dcc.Loading([ 
                 html.Div(id='tabs-content')
