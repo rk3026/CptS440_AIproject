@@ -19,3 +19,6 @@ accelerate
 #Bluesky:
 atproto
 python-dotenv
+
+#YELP:
+yelpapi

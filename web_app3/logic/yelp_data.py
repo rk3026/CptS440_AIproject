@@ -1,50 +1,68 @@
-import json
-import pandas as pd
+from yelpapi import YelpAPI
+import os
 from logic.models import models
 
-# Path to the Yelp dataset
-YELP_BUSINESS_FILE = './data/yelp_dataset/yelp_academic_dataset_business.json'
-YELP_REVIEW_FILE = './data/yelp_dataset/yelp_academic_dataset_review.json'
+# Initialize Yelp API
+API_KEY = os.getenv("YELP_API_KEY")  # Make sure your Yelp API Key is set
+yelp_api = YelpAPI(API_KEY)
 
-# Function to search Yelp businesses
-def search_yelp_business(query, max_results=5):
-    matching_businesses = []
-    with open(YELP_BUSINESS_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            business = json.loads(line)
-            # Check if the business name matches the query
-            if query.lower() in business['name'].lower():
-                # Ensure all location fields are included
-                business_info = {
-                    'business_id': business['business_id'],
-                    'name': business['name'],
-                    'address': business.get('address', ''),
-                    'city': business.get('city', ''),
-                    'state': business.get('state', ''),
-                    'postal_code': business.get('postal_code', '')
-                }
-                matching_businesses.append(business_info)
+def search_yelp_business(query, state=None, country=None, max_results=5):
+    # Prepare the location
+    location = query  # Start with the query itself
+    
+    if state and country:
+        location = f"{state}, {country}"  # Combine state and country if both are provided
+    elif state:
+        location = f"{state}"  # If only state is provided, use it
+    elif country:
+        location = f"{country}"  # If only country is provided, use it
 
-            # Limit the number of results
-            if len(matching_businesses) >= max_results:
-                break
-    return matching_businesses
+    # Define search parameters
+    params = {
+        'term': query,
+        'location': location,  # Use the location string
+        'limit': max_results
+    }
+
+    try:
+        # Query Yelp API
+        response = yelp_api.search_query(**params)
+        businesses = []
+
+        # Process businesses from the response
+        for business in response.get('businesses', []):
+            business_info = {
+                'business_id': business['id'],
+                'name': business['name'],
+                'address': ' '.join(business['location'].get('address', [])),
+                'city': business['location'].get('city', ''),
+                'state': business['location'].get('state', ''),
+                'postal_code': business['location'].get('zip_code', '')
+            }
+            businesses.append(business_info)
+
+        return businesses
+    except Exception as e:
+        print(f"Error fetching Yelp data: {e}")
+        return []
+
 
 # Function to load reviews for a specific business
 def load_reviews_for_business(business_id, limit=10):
+    reviews_response = yelp_api.reviews_query(business_id)
+    
     reviews = []
-    with open(YELP_REVIEW_FILE, 'r', encoding='utf-8') as f:
-        for line in f:
-            review = json.loads(line)
-            if review['business_id'] == business_id:
-                reviews.append(review)
-                if len(reviews) >= limit:
-                    break
-    return pd.DataFrame(reviews)
+    for review in reviews_response.get('reviews', [])[:limit]:
+        reviews.append({
+            'text': review['text'],
+            'rating': review['rating'],
+            'time_created': review['time_created']
+        })
+    
+    return reviews
 
-# Function to analyze sentiment of text
+# Function to analyze sentiment of text (same as previous)
 def analyze_text_sentiment(text):
-    # Limit the text to 512 tokens (since BERT models like Yelp BERT have a max length of 512 tokens)
     max_length = 512
     if len(text.split()) > max_length:
         text = ' '.join(text.split()[:max_length])  # Truncate text to 512 tokens
