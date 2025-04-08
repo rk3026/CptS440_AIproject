@@ -44,15 +44,6 @@ app.layout = dbc.Container([
 
                 # Add a tab for Bluesky post and comments analysis
                 dcc.Tab(label='Bluesky Post Analysis', children=[
-                    dbc.Card([
-                        dbc.CardHeader("Post to Bluesky"),
-                        dbc.CardBody([
-                            dcc.Textarea(id="bluesky-input-text", placeholder="Enter text to post", style={'width': '100%', 'height': 100}),
-                            dbc.Button("Analyze and Post", id="analyze-bluesky-btn", color="primary", className="my-2")
-                        ])
-                    ]),
-                    html.Div(id="bluesky-post-results"),
-
                     # Section to analyze comments of an existing Bluesky post
                     dbc.Card([
                         dbc.CardHeader("Analyze Comments of Bluesky Post"),

@@ -30,31 +30,6 @@ def get_profile_id_from_user_did(user_did):
 
 # Register Bluesky login, post, and comment analysis functionality
 def register_bluesky_callbacks(app):
-
-    # Callback to log in, send a post, and analyze comments of a Bluesky post
-    @app.callback(
-        Output('bluesky-post-results', 'children'),
-        Input('analyze-bluesky-btn', 'n_clicks'),
-        State('bluesky-input-text', 'value'),
-        prevent_initial_call=True
-    )
-    def analyze_bluesky_post(n_clicks, input_text):
-        try:
-            # Log into Bluesky
-            client.login(os.getenv('BLUESKY_USER'), os.getenv('BLUESKY_APP_KEY'))
-
-            # Send a post to Bluesky
-            post = client.send_post(input_text)
-            post_uri = post.uri
-
-            # Return the URI of the post for confirmation
-            return html.Div([html.H5(f"Post successfully created!"),
-                             html.P(f"Post URI: {post_uri}")])
-
-        except Exception as e:
-            return html.Div([html.H5("Error posting to Bluesky"),
-                             html.P(str(e))])
-
     # Callback to analyze comments of a Bluesky post based on the post link provided
     @app.callback(
         Output('bluesky-comment-results', 'children'),
