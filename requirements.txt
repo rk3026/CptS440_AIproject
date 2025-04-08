@@ -15,3 +15,7 @@ dash_bootstrap_components
 datasets
 evaluate
 accelerate
+
+#Bluesky:
+atproto
+python-dotenv

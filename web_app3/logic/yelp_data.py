@@ -1,22 +1,6 @@
 import json
 import pandas as pd
-from transformers import pipeline
-
-# Define sentiment analysis models
-models = {
-    "Twitter RoBERTa": pipeline("sentiment-analysis", model="cardiffnlp/twitter-roberta-base-sentiment"),
-    "Yelp BERT": pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment"),
-    "llama3": "x",
-    "deepseek": "y",
-    "GPT-90": "z"
-}
-
-# Predefine the label mapping for Twitter RoBERTa
-roberta_label_map = {
-    "LABEL_0": "Negative",
-    "LABEL_1": "Neutral",
-    "LABEL_2": "Positive"
-}
+from logic.models import models
 
 # Path to the Yelp dataset
 YELP_BUSINESS_FILE = './data/yelp_dataset/yelp_academic_dataset_business.json'
@@ -51,6 +35,13 @@ def load_reviews_for_business(business_id, limit=10):
 
 # Function to analyze sentiment of text
 def analyze_text_sentiment(text):
+    # Limit the text to 512 tokens (since BERT models like Yelp BERT have a max length of 512 tokens)
+    max_length = 512
+    if len(text.split()) > max_length:
+        text = ' '.join(text.split()[:max_length])  # Truncate text to 512 tokens
+
     model = models["Yelp BERT"]
     sentiment = model(text)
     return sentiment
+
+
