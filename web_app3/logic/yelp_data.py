@@ -12,11 +12,20 @@ def search_yelp_business(query, max_results=5):
     with open(YELP_BUSINESS_FILE, 'r', encoding='utf-8') as f:
         for line in f:
             business = json.loads(line)
+            # Check if the business name matches the query
             if query.lower() in business['name'].lower():
-                matching_businesses.append({
+                # Ensure all location fields are included
+                business_info = {
                     'business_id': business['business_id'],
-                    'name': business['name']
-                })
+                    'name': business['name'],
+                    'address': business.get('address', ''),
+                    'city': business.get('city', ''),
+                    'state': business.get('state', ''),
+                    'postal_code': business.get('postal_code', '')
+                }
+                matching_businesses.append(business_info)
+
+            # Limit the number of results
             if len(matching_businesses) >= max_results:
                 break
     return matching_businesses
@@ -43,5 +52,3 @@ def analyze_text_sentiment(text):
     model = models["Yelp BERT"]
     sentiment = model(text)
     return sentiment
-
-

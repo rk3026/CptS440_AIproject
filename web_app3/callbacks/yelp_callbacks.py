@@ -16,7 +16,22 @@ def register_yelp_callbacks(app):
             return [], {'display': 'none'}
         
         businesses = search_yelp_business(input_value, max_results=5)
-        suggestions = [{'label': business['name'], 'value': business['name']} for business in businesses]
+        suggestions = []
+
+        for business in businesses:
+            business_name = business.get('name', 'Unknown Business')
+            # Handle missing address, city, state
+            address = business.get('address', '')
+            city = business.get('city', '')
+            state = business.get('state', '')
+            
+            # If any location component is missing, show a placeholder text
+            location = f"{address}, {city}, {state}" if address and city and state else "Location not available"
+
+            suggestions.append({
+                'label': f"{business_name} - {location}",  # Business name and location
+                'value': business_name  # Store the business name for later use
+            })
         
         return suggestions, {'display': 'block'}
 
@@ -39,7 +54,8 @@ def register_yelp_callbacks(app):
         business_info = search_yelp_business(business_name, max_results=5)
 
         if business_info:
-            business_id = business_info[0]['business_id']  # Take the first match
+            business = business_info[0]  # Take the first match
+            business_id = business['business_id']
             reviews_for_business = load_reviews_for_business(business_id, limit=10)
 
             if not reviews_for_business.empty:
@@ -75,4 +91,3 @@ def register_yelp_callbacks(app):
                 return "No reviews found for this business."
         else:
             return "Business not found."
-

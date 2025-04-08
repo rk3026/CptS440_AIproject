@@ -38,6 +38,8 @@ def register_bluesky_callbacks(app):
         prevent_initial_call=True
     )
     def analyze_comments_of_post(n_clicks, post_url):
+        if not post_url:
+            return
         try:
             # Extract post ID from URL
             post_id = extract_post_id(post_url)

@@ -24,7 +24,12 @@ app.layout = dbc.Container([
                             dbc.Button("Analyze", id="analyze-btn", color="primary", className="my-2")  
                         ])  
                     ]),  
-                    html.Div(id="text-analysis-results")  
+
+                    # Wrap the results of the text sentiment analysis in dcc.Loading
+                    dcc.Loading(
+                        type="circle",  # You can also use "dot" or "default" here
+                        children=html.Div(id="text-analysis-results")
+                    )
                 ]),  
 
                 dcc.Tab(label='Yelp Reviews Analysis', children=[  
@@ -43,16 +48,21 @@ app.layout = dbc.Container([
                 ]),
 
                 # Add a tab for Bluesky post and comments analysis
-                dcc.Tab(label='Bluesky Post Analysis', children=[
+                dcc.Tab(label='Bluesky Post Analysis', children=[  
                     # Section to analyze comments of an existing Bluesky post
-                    dbc.Card([
-                        dbc.CardHeader("Analyze Comments of Bluesky Post"),
-                        dbc.CardBody([
-                            dcc.Input(id="bluesky-post-url", placeholder="Enter Bluesky post URL", type="text", style={'width': '100%'}),
-                            dbc.Button("Analyze Comments", id="analyze-comments-btn", color="primary", className="my-2")
-                        ])
+                    dbc.Card([  
+                        dbc.CardHeader("Analyze Comments of Bluesky Post"),  
+                        dbc.CardBody([  
+                            dcc.Input(id="bluesky-post-url", placeholder="Enter Bluesky post URL", type="text", style={'width': '100%'}),  
+                            dbc.Button("Analyze Comments", id="analyze-comments-btn", color="primary", className="my-2")  
+                        ])  
                     ]),
-                    html.Div(id="bluesky-comment-results")
+
+                    # Wrap the result section with `dcc.Loading` to show a loading spinner
+                    dcc.Loading(
+                        type="circle",  # You can change the type to "dot" or "default" if you prefer
+                        children=html.Div(id="bluesky-comment-results")
+                    )
                 ])
             ])  
         ]),  
