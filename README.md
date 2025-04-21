@@ -34,4 +34,4 @@ Run the appropriate setup script based on your operating system:
 This will create a **virtual environment** with all the necessary dependencies listed in `requirements.txt`.
 
 ### 3. Running the Project
-After setup, you can run the **Jupyter notebooks** or Python scripts to analyze sentiment from various datasets. To run the web app, run the web_app.bat or web_app.sh file.
+After setup, you can run the **Jupyter notebooks** or Python scripts to analyze sentiment from various datasets.
