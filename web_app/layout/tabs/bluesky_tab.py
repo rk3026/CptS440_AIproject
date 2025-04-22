@@ -12,41 +12,51 @@ initial_pie.update_traces(marker=dict(colors=["green", "grey", "red"]))
 
 def get_bluesky_tab():
     return dcc.Tab(label="Bluesky Post Analysis", children=[
-                    # Input Card outside Loading
-                    dbc.Card([
-                        dbc.CardHeader("Analyze Comments of Bluesky Post"),
-                        dbc.CardBody([
-                            dcc.Input(
-                                id="bluesky-post-url",
-                                placeholder="Enter Bluesky post URL",
-                                type="text",
-                                style={"width": "100%"}
-                            ),
-                            dbc.Button(
-                                "Analyze Comments",
-                                id="analyze-comments-btn",
-                                color="primary",
-                                className="mt-2"
-                            )
-                        ])
-                    ], className="mb-4"),
+        # Hidden Stores
+        dcc.Store(id="bluesky-comments-store"),
+        dcc.Store(id="bluesky-sentiments-store"),
 
-                    # Only chart + results in Loading
-                    # dcc.Loading(
-                    #     id="loading-bluesky",
-                    #     type="circle",
-                    #     children=[
-                           
-                    #     ]
-                    # )
-                    html.Div(id="bluesky-comment-count", className="mb-2 fw-bold text-end"),
-                    dcc.Graph(
-                            id="sentiment-summary-graph",
-                            figure=initial_pie,
-                            style={"minHeight": "300px"}
-                        ),
-                    html.Div(
-                        id="bluesky-comment-results",
-                        style={"minHeight": "300px"}
-                    )
-                ])
+        # Polling Interval
+        dcc.Interval(
+            id="bluesky-interval",
+            interval=500,
+            disabled=True,
+            n_intervals=0
+        ),
+
+        # Input Card
+        dbc.Card([
+            dbc.CardHeader("Analyze Comments of Bluesky Post"),
+            dbc.CardBody([
+                dcc.Input(
+                    id="bluesky-post-url",
+                    placeholder="Enter Bluesky post URL",
+                    type="text",
+                    style={"width": "100%"}
+                ),
+                dbc.Button(
+                    "Analyze Comments",
+                    id="analyze-comments-btn",
+                    color="primary",
+                    className="mt-2"
+                )
+            ])
+        ], className="mb-4"),
+
+        # Loading for Graph + Results
+        dcc.Loading(
+            id="loading-bluesky",
+            type="circle"
+        ),
+        
+        html.Div(id="bluesky-comment-count", className="mb-2 fw-bold text-end"),
+        dcc.Graph(
+            id="sentiment-summary-graph",
+            figure=initial_pie,
+            style={"minHeight": "300px"}
+        ),
+        html.Div(
+            id="bluesky-comment-results",
+            style={"minHeight": "300px"}
+        )
+    ])
