@@ -1,30 +1,24 @@
 from dash import Input, Output, State, html, dash_table
+import dash
 from logic.yelp_data import *
 import dash_bootstrap_components as dbc
 
+from dash import Input, Output, State, html
+import dash_bootstrap_components as dbc
+from logic.yelp_data import *
+
 def register_yelp_callbacks(app):
-    # Update suggestions dropdown based on user input
-    @app.callback(
-        Output('business-suggestions', 'options'),
-        Output('business-suggestions', 'style'),
-        Input('yelp-business-input', 'value'),
-        Input('state-dropdown', 'value'),
-        Input('city-dropdown', 'value'),
-        prevent_initial_call=True
-    )
-    # Update state dropdown based on selected country
+
     @app.callback(
         Output('state-dropdown', 'options'),
         Input('country-dropdown', 'value'),
-        prevent_initial_call=True
     )
     def update_state_dropdown(country):
         if not country:
             return []
-        states = get_available_states(country)
+        states = get_all_states()
         return [{'label': s, 'value': s} for s in states]
 
-    # Update city dropdown based on selected state
     @app.callback(
         Output('city-dropdown', 'options'),
         Input('state-dropdown', 'value'),
@@ -36,28 +30,61 @@ def register_yelp_callbacks(app):
         cities = get_available_cities(state)
         return [{'label': c, 'value': c} for c in cities]
 
-    # Analyze reviews and return sentiment table + summary
+    # 🔄 Show businesses directly
     @app.callback(
-        Output('yelp-reviews-results', 'children'),
-        Input('analyze-yelp-btn', 'n_clicks'),
-        State('business-suggestions', 'value'),
+        Output('business-list', 'children'),
+        Input('yelp-business-input', 'value'),
+        State('state-dropdown', 'value'),
+        State('city-dropdown', 'value'),
         prevent_initial_call=True
     )
-    def analyze_yelp_reviews(n_clicks, business_id):
-        if not business_id:
-            return "Please select a business."
+    def update_business_list(name_input, state, city):
+        if not name_input:
+            return html.Div("Start typing to search...", className="text-muted")
 
-        reviews = load_reviews_for_business_from_db(business_id, limit=100)  # adjust limit if needed
+        matches = search_yelp_business_from_db(name_input, state, city, max_results=20)
+
+        if not matches:
+            return html.Div("No businesses found.", className="text-danger")
+
+        return html.Ul([
+            html.Li(
+                html.Button(
+                    f"{b['name']} ({b['location']['city']}, {b['location']['state']})",
+                    id={'type': 'business-button', 'index': b['business_id']},
+                    n_clicks=0,
+                    className="btn btn-link"
+                )
+            )
+            for b in matches
+        ])
+
+    # 🎯 Callback to analyze reviews when a business button is clicked
+    @app.callback(
+        Output('yelp-reviews-results', 'children'),
+        Input({'type': 'business-button', 'index': dash.ALL}, 'n_clicks'),
+        State({'type': 'business-button', 'index': dash.ALL}, 'id'),
+        prevent_initial_call=True
+    )
+    def analyze_yelp_reviews(n_clicks_list, ids):
+        # Find the index (business_id) of the button that was clicked
+        triggered = [i for i, n in enumerate(n_clicks_list) if n > 0]
+        if not triggered:
+            return
+
+        idx = triggered[0]
+        business_id = ids[idx]['index']
+
+        reviews = load_reviews_for_business_from_db(business_id, limit=100)
 
         if not reviews:
-            return "No reviews found for this business."
+            return dbc.Alert("No reviews found for this business.", color="danger")
 
-        # Analyze sentiments
         sentiment_data = []
         score_summary = {'POSITIVE': 0, 'NEGATIVE': 0, 'NEUTRAL': 0, 'count': 0}
 
         for r in reviews:
-            sentiment = analyze_text_sentiment(r['text'])[0]  # Assume 1 output per review
+            sentiment = analyze_text_sentiment(r['text'])[0]
             label = sentiment['label'].upper()
             score = sentiment['score']
             sentiment_data.append({
@@ -69,7 +96,6 @@ def register_yelp_callbacks(app):
             if label in score_summary:
                 score_summary[label] += 1
 
-        # Summary card
         summary = html.Div([
             html.H5("Sentiment Summary"),
             html.P(f"Total Reviews: {score_summary['count']}"),
@@ -78,7 +104,6 @@ def register_yelp_callbacks(app):
             html.P(f"Negative: {score_summary['NEGATIVE']}")
         ])
 
-        # Reviews table
         table = dash_table.DataTable(
             columns=[
                 {'name': 'Review Text', 'id': 'Review Text'},
@@ -93,3 +118,4 @@ def register_yelp_callbacks(app):
         )
 
         return html.Div([summary, html.Hr(), table])
+

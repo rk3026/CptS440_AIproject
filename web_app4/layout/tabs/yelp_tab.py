@@ -6,10 +6,16 @@ def get_yelp_tab():
         dbc.Card([
             dbc.CardHeader("Find and Analyze Yelp Business Reviews"),
             dbc.CardBody([
-                html.Div("Step 1: Choose a location", className="mb-2 fw-bold"),
 
+                html.Div("Step 1: Choose a location", className="mb-2 fw-bold"),
                 dbc.Row([
-                    dbc.Col(dcc.Dropdown(id="country-dropdown", placeholder="Select Country"), width=4),
+                    dbc.Col(dcc.Dropdown(
+                        id="country-dropdown",
+                        options=[{'label': 'United States', 'value': 'US'}],
+                        value='US',
+                        disabled=True,
+                        style={'backgroundColor': '#f8f9fa'}
+                    )),
                     dbc.Col(dcc.Dropdown(id="state-dropdown", options=[], placeholder="Select State"), width=4),
                     dbc.Col(dcc.Dropdown(id="city-dropdown", options=[], placeholder="Select City"), width=4),
                 ], className="mb-3"),
@@ -17,10 +23,9 @@ def get_yelp_tab():
                 html.Div("Step 2: Search for a business name", className="mb-2 fw-bold"),
                 dcc.Input(id="yelp-business-input", type="text", placeholder="Enter part of business name...", style={'width': '100%'}),
 
-                html.Div("Suggestions:", className="mt-3 mb-1 fw-bold"),
-                dcc.Dropdown(id="business-suggestions", placeholder="Choose a business", style={'width': '100%'}),
+                html.Div("Matching Businesses:", className="mt-4 mb-1 fw-bold"),
+                html.Div(id="business-list"),
 
-                dbc.Button("Analyze Reviews", id="analyze-yelp-btn", color="primary", className="mt-3")
             ])
         ]),
         dcc.Loading(

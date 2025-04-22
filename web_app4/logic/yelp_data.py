@@ -1,30 +1,37 @@
 import sqlite3
 from logic.models import models
 
-def get_available_states(country):
-    conn = sqlite3.connect("yelp.db")
+# === Constants ===
+YELP_REVIEW_DB = "data/yelp_reviews.db"
+
+TABLE_BUSINESSES = "businesses"
+TABLE_REVIEWS = "reviews"
+
+# === DB Access Functions ===
+
+def get_all_states():
+    conn = sqlite3.connect(YELP_REVIEW_DB)
     cursor = conn.cursor()
-    cursor.execute("SELECT DISTINCT state FROM yelp_businesses WHERE country = ? ORDER BY state", (country,))
+    cursor.execute(f"SELECT DISTINCT state FROM {TABLE_BUSINESSES} ORDER BY state")
     states = [row[0] for row in cursor.fetchall()]
     conn.close()
     return states
 
 def get_available_cities(state):
-    conn = sqlite3.connect("yelp.db")
+    conn = sqlite3.connect(YELP_REVIEW_DB)
     cursor = conn.cursor()
-    cursor.execute("SELECT DISTINCT city FROM yelp_businesses WHERE state = ? ORDER BY city", (state,))
+    cursor.execute(f"SELECT DISTINCT city FROM {TABLE_BUSINESSES} WHERE state = ? ORDER BY city", (state,))
     cities = [row[0] for row in cursor.fetchall()]
     conn.close()
     return cities
 
-
 def search_yelp_business_from_db(business_name, state=None, city=None, max_results=10):
-    conn = sqlite3.connect('data/yelp_reviews.db')
+    conn = sqlite3.connect(YELP_REVIEW_DB)
     cursor = conn.cursor()
 
-    query = '''
+    query = f'''
         SELECT business_id, name, address, city, state
-        FROM businesses
+        FROM {TABLE_BUSINESSES}
         WHERE name LIKE ?
     '''
     params = [f"%{business_name}%"]
@@ -58,23 +65,23 @@ def search_yelp_business_from_db(business_name, state=None, city=None, max_resul
     return businesses
 
 def load_reviews_for_business_from_db(business_id, limit=None):
-    conn = sqlite3.connect('data/yelp_reviews.db')
+    conn = sqlite3.connect(YELP_REVIEW_DB)
     cursor = conn.cursor()
 
-    query = 'SELECT text FROM reviews WHERE business_id = ?'
+    query = f'SELECT text FROM {TABLE_REVIEWS} WHERE business_id = ?'
     params = [business_id]
-    
+
     if limit:
         query += ' LIMIT ?'
         params.append(limit)
 
     cursor.execute(query, params)
     reviews = [{'text': row[0]} for row in cursor.fetchall()]
-    
     conn.close()
     return reviews
 
-# Function to analyze sentiment of text (same as previous)
+# === Sentiment Analysis ===
+
 def analyze_text_sentiment(text):
     max_length = 512
     if len(text.split()) > max_length:

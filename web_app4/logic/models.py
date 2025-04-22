@@ -4,7 +4,7 @@ from transformers import pipeline
 models = {
     "Twitter RoBERTa": pipeline("sentiment-analysis", model="cardiffnlp/twitter-roberta-base-sentiment"),
     "Yelp BERT": pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment"),
-    "GoEmotions": pipeline("text-classification", model="SamLowe/roberta-base-go_emotions", return_all_scores=True)
+    "GoEmotions": pipeline("text-classification", model="SamLowe/roberta-base-go_emotions", top_k=None)
     #"llama3": "x",
     #"deepseek": "y",
     #"GPT-90": "z"
