@@ -24,7 +24,7 @@ def register_text_sentiment_callbacks(app):
                 handler = model_handlers.get(model_name, GenericModelHandler())
                 output = handler.analyze(model, input_text)
 
-                if model_name == "GoEmotions":
+                if model_name in ["GoEmotions", "T5Emotions"]:
                     ekman_str = ', '.join([f"{label} ({score})" for label, score in output])
                     results.append(html.Div([
                         html.H5(f'{model_name}:'),

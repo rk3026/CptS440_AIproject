@@ -2,6 +2,7 @@ numpy
 pandas
 scikit-learn
 torch
+torchtext
 pgmpy
 pomegranate
 dash
@@ -10,7 +11,7 @@ ipykernel
 jupyter
 transformers #for Hugging Face Models
 dash_bootstrap_components
-sqlite
+python-dotenv
 
 #fine-tuning:
 datasets
@@ -19,7 +20,6 @@ accelerate
 
 #Bluesky:
 atproto
-python-dotenv
 
 #YELP:
 yelpapi

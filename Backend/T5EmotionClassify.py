@@ -8,7 +8,7 @@ def summarize_user_input():
     eos_idx = 1
     max_seq_len = 512
 
-    model_path = "./t5-emotions"  
+    model_path = "./models/t5-emotions"  
     model = T5ForConditionalGeneration.from_pretrained(model_path)
     tokenizer = T5Tokenizer.from_pretrained(model_path)
     model.eval()
