@@ -10,6 +10,7 @@ ipykernel
 jupyter
 transformers #for Hugging Face Models
 dash_bootstrap_components
+sqlite
 
 #fine-tuning:
 datasets
