@@ -2,12 +2,19 @@ from dash import Input, Output, State, html, dash_table
 import dash
 from logic.yelp_data import *
 import dash_bootstrap_components as dbc
-
 from dash import Input, Output, State, html
 import dash_bootstrap_components as dbc
 from logic.yelp_data import *
 
 def register_yelp_callbacks(app):
+    # Clear results on any button click
+    @app.callback(
+        Output('yelp-reviews-results', 'children', allow_duplicate=True),
+        Input({'type': 'business-button', 'index': dash.ALL}, 'n_clicks'),
+        prevent_initial_call=True
+    )
+    def clear_reviews(_):
+        return ""  # Clears the content (and triggers spinner next)
 
     @app.callback(
         Output('state-dropdown', 'options'),
@@ -30,17 +37,14 @@ def register_yelp_callbacks(app):
         cities = get_available_cities(state)
         return [{'label': c, 'value': c} for c in cities]
 
-    # 🔄 Show businesses directly
     @app.callback(
         Output('business-list', 'children'),
         Input('yelp-business-input', 'value'),
-        State('state-dropdown', 'value'),
-        State('city-dropdown', 'value'),
-        prevent_initial_call=True
+        Input('state-dropdown', 'value'),
+        Input('city-dropdown', 'value'),
     )
     def update_business_list(name_input, state, city):
-        if not name_input:
-            return html.Div("Start typing to search...", className="text-muted")
+        name_input = name_input or ""
 
         matches = search_yelp_business_from_db(name_input, state, city, max_results=20)
 
@@ -59,7 +63,8 @@ def register_yelp_callbacks(app):
             for b in matches
         ])
 
-    # 🎯 Callback to analyze reviews when a business button is clicked
+
+    # Callback to analyze reviews when a business button is clicked
     @app.callback(
         Output('yelp-reviews-results', 'children'),
         Input({'type': 'business-button', 'index': dash.ALL}, 'n_clicks'),
