@@ -1,4 +1,7 @@
-from dash import Input, Output, State, html, dcc
+# callbacks/social_media_callbacks.py
+
+from dash import Input, Output, State, callback_context, html
+import dash
 import dash_bootstrap_components as dbc
 from atproto import Client
 import os
@@ -7,157 +10,165 @@ from logic.models import models, roberta_label_map
 from collections import Counter
 import plotly.express as px
 
-# Load environment variables
 load_dotenv()
+try:
+    client = Client()
+    client.login(os.getenv('BLUESKY_USER'), os.getenv('BLUESKY_APP_KEY'))
+except Exception:
+    client = None
 
-# Initialize the Bluesky Client
-client = Client()
-client.login(os.getenv('BLUESKY_USER'), os.getenv('BLUESKY_APP_KEY'))
-
-# Note: To show a loading spinner on every analyze click, wrap the output placeholder in your layout:
-# dcc.Loading(id='loading-comments', type='default', children=html.Div(id='bluesky-comment-results'))
-
-# Function to extract profile ID and post ID from the Bluesky URL
 def extract_post_id(post_url):
     parts = post_url.split('/')
     user_did = parts[4]
-    profile_id = get_profile_id_from_user_did(user_did)
+    profile_id = client.get_profile(user_did)['did']
     post_id = parts[-1]
     return f"at://{profile_id}/app.bsky.feed.post/{post_id}"
 
-
-def get_profile_id_from_user_did(user_did):
-    profile = client.get_profile(user_did)
-    return profile['did']
-
-# Function to analyze sentiment of text
 def analyze_text_sentiment(text):
-    max_length = 512
-    words = text.split()
-    if len(words) > max_length:
-        text = ' '.join(words[:max_length])
+    tokens = text.split()
+    if len(tokens) > 512:
+        text = ' '.join(tokens[:512])
+    out = models["Twitter RoBERTa"](text)[0]
+    label = roberta_label_map.get(out['label'], 'Unknown')
+    return {'label': label, 'score': out['score']}
 
-    model = models["Twitter RoBERTa"]
-    sentiment = model(text)
-    label = sentiment[0]['label']
-    mapped_label = roberta_label_map.get(label, 'Unknown')
-    score = sentiment[0]['score']
-    return {'label': mapped_label, 'score': score}
-
-# Register Bluesky login, post, and comment analysis functionality
 def register_bluesky_callbacks(app):
+
     @app.callback(
-        Output('bluesky-comment-results', 'children'),
+        Output('bluesky-comments-store',  'data'),
+        Output('bluesky-sentiments-store', 'data'),
+        Output('bluesky-interval',         'disabled'),
         Input('analyze-comments-btn', 'n_clicks'),
-        State('bluesky-post-url', 'value'),
+        Input('bluesky-interval',     'n_intervals'),
+        State('bluesky-post-url',      'value'),
+        State('bluesky-comments-store','data'),
+        State('bluesky-sentiments-store','data'),
         prevent_initial_call=True
     )
-    def analyze_comments_of_post(n_clicks, post_url):
-        if not post_url:
-            return
-        try:
-            # Fetch thread and comments
-            post_id = extract_post_id(post_url)
-            post_thread = client.get_post_thread(post_id).thread
-            comments = post_thread.replies or []
+    def batch_handler(btn_clicks, n_intervals,
+                      post_url, comments_data,
+                      sentiments_data):
+        trig = callback_context.triggered[0]['prop_id'].split('.')[0]
 
-            if not comments:
-                return html.Div(html.H5("No comments found for this post."))
+        # 1) User clicked "Analyze Comments"
+        if trig == 'analyze-comments-btn':
+            if not post_url or not client:
+                return dash.no_update, dash.no_update, True
 
-            sentiment_results = []  # HTML elements for each comment/reply
-            raw_sentiments = []     # {'label', 'score'} dicts
+            thread = client.get_post_thread(extract_post_id(post_url)).thread
+            raw    = thread.replies or []
 
-            # Helper to render a comment or reply with styled sentiment
-            def record_and_render(text, parent_text=None):
-                sent = analyze_text_sentiment(text)
-                raw_sentiments.append(sent)
-                color_map = {
-                    'Positive': 'text-success',
-                    'Neutral':  'text-secondary',
-                    'Negative': 'text-danger'
-                }
-                sentiment_class = color_map.get(sent['label'], 'text-dark')
+            flat = []
+            def collect(node, parent):
+                for r in (node.replies or []):
+                    txt = getattr(r.post.record, 'text', '') or ''
+                    if txt.strip():
+                        flat.append({'text': txt, 'parent': parent})
+                        collect(r, txt)
 
-                sentiment_results.append(
-                    dbc.Card(
-                        dbc.CardBody([
-                            html.H5(
-                                f"Reply to '{parent_text[:50]}...'" if parent_text else "Comment",
-                                className="card-title"
-                            ),
-                            html.P(text, className="card-text"),
-                            html.P(
-                                f"Sentiment: {sent['label']} ({sent['score']:.2f})",
-                                className=f"fw-bold {sentiment_class}",
-                                style={'fontSize': '1.1rem'}
-                            )
-                        ]),
-                        className="mb-3"
-                    )
-                )
+            for top in raw:
+                txt = getattr(top.post.record, 'text', '') or ''
+                if txt.strip():
+                    flat.append({'text': txt, 'parent': None})
+                    collect(top, txt)
 
-            # Recursive reply analysis
-            def analyze_replies(thread_post, parent_text):
-                for reply in (thread_post.replies or []):
-                    reply_text = getattr(reply.post.record, 'text', '') or ''
-                    if not reply_text.strip():
-                        continue
-                    record_and_render(reply_text, parent_text)
-                    analyze_replies(reply, reply_text)
+            # reset both stores and enable interval
+            return flat, [], False
 
-            # Process top-level comments, skipping media-only
-            for comment in comments:
-                comment_text = getattr(comment.post.record, 'text', '') or ''
-                if not comment_text.strip():
-                    continue
-                record_and_render(comment_text)
-                analyze_replies(comment, comment_text)
+        # 2) Interval tick: process next batch
+        elif trig == 'bluesky-interval':
+            if not comments_data:
+                return dash.no_update, dash.no_update, True
 
-            # Build summary figure with custom sentiment colors
-            if raw_sentiments:
-                counts = Counter([r['label'] for r in raw_sentiments])
-                labels = list(counts.keys())
-                values = list(counts.values())
+            done_list = sentiments_data or []
+            B  = 5
+            i0 = len(done_list)
+            i1 = min(i0 + B, len(comments_data))
 
-                fig = px.pie(
-                    names=labels,
-                    values=values,
-                    title='Overall Sentiment Distribution',
-                )
-                # Map labels to fixed colors: Positive=green, Neutral=grey, Negative=red
-                graph_color_map = {'Positive': 'green', 'Neutral': 'grey', 'Negative': 'red'}
-                fig.update_traces(
-                    marker=dict(colors=[graph_color_map.get(lbl, 'grey') for lbl in labels])
-                )
+            for entry in comments_data[i0:i1]:
+                sent = analyze_text_sentiment(entry['text'])
+                done_list.append({**entry, **sent})
 
-                # Add average confidence
-                avg_conf = sum(r['score'] for r in raw_sentiments) / len(raw_sentiments)
-                fig.add_annotation(
-                    text=f"Avg. confidence: {avg_conf:.2f}",
-                    x=0.5, y=-0.1, showarrow=False,
-                    xref='paper', yref='paper'
-                )
+            # disable interval if done
+            return dash.no_update, done_list, (i1 >= len(comments_data))
 
-                summary_graph = dcc.Graph(
-                    id='sentiment-summary-graph',
-                    figure=fig,
-                    style={'marginBottom': '2em'}
-                )
-            else:
-                summary_graph = html.Div(html.H5("No comments to summarize."))
+        return dash.no_update, dash.no_update, True
 
-            # Return: summary graph, separator, then detailed cards
-            return html.Div([
-                dbc.Container([
-                    summary_graph,
-                    html.Hr(),
-                    html.H4("Detailed Comment Analysis", className="mt-4 mb-2"),
-                    *sentiment_results
-                ], fluid=True)
-            ])
+    @app.callback(
+        Output('sentiment-summary-graph', 'figure'),
+        Input('bluesky-sentiments-store','data')
+    )
+    def update_pie(data):
+        fig = px.pie(names=[], values=[], title='Overall Sentiment Distribution')
+        if not data:
+            return fig
 
-        except Exception as e:
-            return html.Div([
-                html.H5("Error analyzing comments"),
-                html.P(str(e))
-            ])
+        counts = Counter(d['label'] for d in data)
+        labels, values = list(counts.keys()), list(counts.values())
+
+        fig = px.pie(names=labels, values=values, title='Overall Sentiment Distribution')
+        fig.update_traces(
+            marker=dict(colors=[
+            'green'  if l=='Positive' else
+            'grey'   if l=='Neutral'  else
+            'red'    for l in labels
+            ],
+            line=dict(color='black', width=2)  # border between segments
+            ),
+            hovertemplate='Sentiment = %{label}<br>Count = %{value}<extra></extra>'
+            
+            #pull=[0.05 if v > 0 else 0 for v in values]  # slight separation
+        )
+        fig.update_layout(
+            transition=dict(duration=500, easing='cubic-in-out'),
+            uniformtext_minsize=12,
+            uniformtext_mode='hide'
+        )
+        avg = sum(d['score'] for d in data) / len(data)
+        fig.add_annotation(
+            text=f"Average confidence: {avg:.2f}",
+            x=0.5, y=-0.1, showarrow=False,
+            xref='paper', yref='paper'
+        )
+        return fig
+
+    @app.callback(
+        Output('bluesky-comment-results','children'),
+        Input('bluesky-sentiments-store','data'),
+        State('bluesky-comment-results','children')
+    )
+    def append_cards(data, existing):
+        # Clear old comments when starting a new analysis
+        if data == []:
+            return []
+
+        existing = existing or []
+        if not data:
+            return existing
+
+        start = len(existing)
+        cards = []
+        for d in data[start:]:
+            css = 'text-success'   if d['label']=='Positive' else \
+                  'text-secondary' if d['label']=='Neutral'  else \
+                  'text-danger'
+            title = f"Reply to '{d['parent'][:50]}...'" if d['parent'] else "Comment"
+            cards.append(
+                dbc.Card(dbc.CardBody([
+                    html.H5(title, className='card-title'),
+                    html.P(d['text'], className='card-text'),
+                    html.P(f"Sentiment: {d['label']} ({d['score']:.2f})",
+                           className=f"fw-bold {css}",
+                           style={'fontSize':'1.1rem'})
+                ]), className='mb-3')
+            )
+        return existing + cards
+    
+    @app.callback(
+        Output('bluesky-comment-count', 'children'),
+        Input('bluesky-sentiments-store', 'data')
+    )
+    def update_comment_count(data):
+        if not data:
+            return "Total comments processed: 0"
+        return f"Total comments processed: {len(data)}"
