@@ -2,7 +2,7 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 
 def get_text_tab():
-    return dcc.Tab(label='Text Analysis', children=[
+    return dcc.Tab(label='Text Analysis', className="text-tab", children=[
         dbc.Card([
             dbc.CardHeader("Enter Text for Analysis"),
             dbc.CardBody([

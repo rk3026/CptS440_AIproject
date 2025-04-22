@@ -11,7 +11,12 @@ initial_pie = px.pie(
 initial_pie.update_traces(marker=dict(colors=["green", "grey", "red"]))
 
 def get_bluesky_tab():
-    return dcc.Tab(label="Bluesky Post Analysis", children=[
+    return dcc.Tab(label="Bluesky Post Analysis", className="bluesky-tab", children=[
+        # Logo
+        html.Div([
+            html.Img(src="assets/Bluesky_Logo.svg", style={"height": "60px"}),
+        ], className="mb-3 text-center"),
+        
         # Hidden Stores
         dcc.Store(id="bluesky-comments-store"),
         dcc.Store(id="bluesky-sentiments-store"),

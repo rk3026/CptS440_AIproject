@@ -2,7 +2,12 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 
 def get_yelp_tab():
-    return dcc.Tab(label='Yelp Reviews Analysis', children=[
+    return dcc.Tab(label='Yelp Reviews Analysis', className="yelp-tab", children=[
+        # Logo
+        html.Div([
+            html.Img(src="assets/Yelp_Logo.svg", style={"height": "60px"}),
+        ], className="mb-3 text-center"),
+        
         dbc.Card([
             dbc.CardHeader("Find and Analyze Yelp Business Reviews"),
             dbc.CardBody([
