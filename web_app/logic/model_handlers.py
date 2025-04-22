@@ -28,22 +28,30 @@ class GoEmotionsHandler(BaseModelHandler):
 
 class T5EmotionsHandler(BaseModelHandler):
     def analyze(self, model, input_text):
-        raw_output = model(input_text)[0]
+        # Make sure input_text is in list form (same as in your script)
+        inputs = [input_text]
 
-        # Map the single label to Ekman emotions
+        # Run classification using the T5 model
+        raw_outputs = model(inputs)  # This calls t5_emotion_classification
+
+        # The model returns a list of decoded strings
+        predicted_label = raw_outputs[0].strip()
+
+        # Map the label to Ekman emotion
         ekman_scores = defaultdict(float)
-        ekman_label = goemotions_to_ekman.get(raw_output.strip(), "other")  # Mapping the output to Ekman emotion
-        ekman_scores[ekman_label] += 1.0  # Assign score for the predicted label
+        ekman_label = goemotions_to_ekman.get(predicted_label, "other")
+        ekman_scores[ekman_label] += 1.0
 
-        # Normalize scores (though it's just one label)
+        # Normalize
         total = sum(ekman_scores.values())
         if total > 0:
             for key in ekman_scores:
                 ekman_scores[key] = round(ekman_scores[key] / total, 4)
 
-        # Return sorted Ekman emotions (even though it's just one emotion)
+        # Return sorted Ekman emotions
         sorted_ekman = sorted(ekman_scores.items(), key=lambda x: x[1], reverse=True)
         return sorted_ekman
+
 
 class GenericModelHandler(BaseModelHandler):
     def analyze(self, model, input_text):

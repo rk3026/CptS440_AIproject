@@ -3,7 +3,7 @@ from transformers import T5ForConditionalGeneration, T5Tokenizer
 import torch
 
 # Load the local T5-emotions model
-t5_model_path = "models/t5-emotions"
+t5_model_path = "./models/t5-emotions"  
 t5_model = T5ForConditionalGeneration.from_pretrained(t5_model_path)
 t5_tokenizer = T5Tokenizer.from_pretrained(t5_model_path)
 t5_model.eval()
@@ -27,6 +27,7 @@ def t5_emotion_classification(texts):
 
     predictions = t5_tokenizer.batch_decode(outputs, skip_special_tokens=True)
     return predictions
+
 
 # Define sentiment analysis models
 models = {
