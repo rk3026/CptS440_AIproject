@@ -6,9 +6,10 @@ import dash_bootstrap_components as dbc
 from atproto import Client
 import os
 from dotenv import load_dotenv
-from logic.models import models, roberta_label_map
+from logic.models import models, roberta_label_map, label_colors
 from collections import Counter
 import plotly.express as px
+
 
 load_dotenv()
 try:
@@ -100,42 +101,70 @@ def register_bluesky_callbacks(app):
     )
     def update_pie(data):
         fig = px.pie(names=[], values=[], title='Overall Sentiment Distribution')
+        fig.update_layout(
+            # paper_bgcolor="#FDFCFB",
+            # plot_bgcolor="#FDFCFB",
+            font=dict(family="Segoe UI", color="#3A3129"),
+            title=dict(
+                text="Overall Sentiment Distribution",
+                font=dict(size=22, color="#3A3129", family="Segoe UI", weight="bold"),
+            )
+        )
         if not data:
             return fig
 
         counts = Counter(d['label'] for d in data)
-        labels, values = list(counts.keys()), list(counts.values())
+        
+        sorted_items = sorted(counts.items()) 
+        labels = [label for label, _ in sorted_items]
+        values = [value for _, value in sorted_items]
 
-        fig = px.pie(names=labels, values=values, title='Overall Sentiment Distribution')
+        fig = px.pie(names=labels, values=values, title="Overall Sentiment Distribution")
+
         fig.update_traces(
-            marker=dict(colors=[
-            'green'  if l=='Positive' else
-            'grey'   if l=='Neutral'  else
-            'red'    for l in labels
-            ],
-            line=dict(color='black', width=2)  # border between segments
+            marker=dict(
+                colors=[label_colors.get(label.lower(), "lightblue") for label in labels],
+                line=dict(color='#826b55', width=4)
             ),
-            hovertemplate='Sentiment = %{label}<br>Count = %{value}<extra></extra>'
-            
-            #pull=[0.05 if v > 0 else 0 for v in values]  # slight separation
+            hovertemplate='Sentiment = %{label}<br>Count = %{value}<extra></extra>',
+            textinfo='label+percent',
+            textposition='inside',
+            domain=dict(x=[0, 1], y=[0, 1])
         )
+
+        avg = sum(d['score'] for d in data) / len(data)
+
         fig.update_layout(
+            # paper_bgcolor="#FDFCFB",
+            # plot_bgcolor="#FDFCFB",
+            font=dict(family="Segoe UI", color="#3A3129"),
+            title=dict(
+                text="Overall Sentiment Distribution",
+                font=dict(size=22, color="#3A3129", family="Segoe UI", weight="bold"),
+            ),
+            # margin=dict(t=60, l=20, r=20, b=60),
             transition=dict(duration=500, easing='cubic-in-out'),
             uniformtext_minsize=12,
-            uniformtext_mode='hide'
-        )
-        avg = sum(d['score'] for d in data) / len(data)
-        fig.add_annotation(
-            text=f"Average confidence: {avg:.2f}",
-            x=0.5, y=-0.1, showarrow=False,
-            xref='paper', yref='paper'
+            uniformtext_mode='hide',
+            annotations=[
+            dict(
+                text=f"Average confidence: {avg:.2f}",
+                x=0.5,  # centered
+                y=-0.15,  # lower out of the chart area
+                showarrow=False,
+                xref='paper',
+                yref='paper',
+                font=dict(size=16, color="#5B4A3B", family="Segoe UI")
+            )
+        ]
+
         )
         return fig
 
     @app.callback(
-        Output('bluesky-comment-results','children'),
-        Input('bluesky-sentiments-store','data'),
-        State('bluesky-comment-results','children')
+    Output('bluesky-comment-results','children'),
+    Input('bluesky-sentiments-store','data'),
+    State('bluesky-comment-results','children')
     )
     def append_cards(data, existing):
         # Clear old comments when starting a new analysis
@@ -149,20 +178,32 @@ def register_bluesky_callbacks(app):
         start = len(existing)
         cards = []
         for d in data[start:]:
-            css = 'text-success'   if d['label']=='Positive' else \
-                  'text-secondary' if d['label']=='Neutral'  else \
-                  'text-danger'
-            title = f"Reply to '{d['parent'][:50]}...'" if d['parent'] else "Comment"
-            cards.append(
-                dbc.Card(dbc.CardBody([
-                    html.H5(title, className='card-title'),
+            label = d['label']
+            color = label_colors.get(label.lower(), "lightblue")  # lowercase for GoEmotions too
+
+            is_reply = bool(d['parent'])
+            if is_reply: title = f"Reply to '{d['parent'][:50]}...'" 
+
+            card = dbc.Card(
+                dbc.CardBody([
+                    html.H6(title, className='card-title') if is_reply else None,
                     html.P(d['text'], className='card-text'),
-                    html.P(f"Sentiment: {d['label']} ({d['score']:.2f})",
-                           className=f"fw-bold {css}",
-                           style={'fontSize':'1.1rem'})
-                ]), className='mb-3')
+                    html.P(
+                        f"Sentiment: {label} ({d['score']:.2f})",
+                        style={
+                            'fontSize': '1.1rem',
+                            'fontWeight': 'bold',
+                            'color': color
+                        }
+                    )
+                ]),
+                className='mb-3',
+                style={"marginLeft": "30px"} if is_reply else {}
             )
+            cards.append(card)
+
         return existing + cards
+
     
     @app.callback(
         Output('bluesky-comment-count', 'children'),
@@ -170,5 +211,5 @@ def register_bluesky_callbacks(app):
     )
     def update_comment_count(data):
         if not data:
-            return "Total comments processed: 0"
-        return f"Total comments processed: {len(data)}"
+            return "0"
+        return f"{len(data)}"

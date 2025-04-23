@@ -14,6 +14,9 @@ def get_text_tab():
                 dbc.Button("Analyze", id="analyze-btn", color="primary", className="my-2")
             ])
         ]),
+        
+        html.Br(),
+        html.H4("Analysis by Models:", className="text-center"),
 
         dcc.Loading(
             type="circle",

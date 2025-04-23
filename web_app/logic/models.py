@@ -78,3 +78,22 @@ goemotions_to_ekman = {
     "surprise": "surprise",
     "neutral": "neutral"
 }
+
+label_colors = {
+    # RoBERTa Sentiment Labels
+    "positive": "green",
+    "neutral": "rgb(51, 76, 102)",
+    "negative": "red",
+
+    # Ekman Emotions
+    "joy": "#B8860B",  # DarkGoldenrod
+    "sadness": "blue",
+    "anger": "darkred",
+    "fear": "purple",
+    "surprise": "orange",
+    "disgust": "olive",
+    # "neutral": "grey",  # lowercase for GoEmotions
+
+    # Fallback
+    "other": "lightblue"
+}
