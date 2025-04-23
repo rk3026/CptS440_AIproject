@@ -152,18 +152,27 @@ def register_yelp_callbacks(app):
 
             modals.append(
                 dbc.Modal([
-                    dbc.ModalHeader("Review Details"),
+                    dbc.ModalHeader(html.H4("Review Details", className="fw-bold text-primary")),
                     dbc.ModalBody([
                         html.P(item["text"]),
                         html.Hr(),
-                        html.P(f"Actual Stars: {item['stars']}"),
-                        html.P(f"Predicted: {item['predicted']}"),
-                        html.P(f"Confidence: {item['score']:.2f}"),
-                        html.P("Summary: (Coming soon...)")
-                    ]),
-                    dbc.ModalFooter(
-                        dbc.Button("Close", id={'type': 'close-modal', 'index': i}, className="ms-auto", n_clicks=0)
-                    )
+                        html.P([
+                            html.Span("Actual Stars: ", className="fw-bold text-dark"),
+                            f"{item['stars']}"
+                        ]),
+                        html.P([
+                            html.Span("Predicted: ", className="fw-bold text-dark"),
+                            f"{item['predicted']}"
+                        ]),
+                        html.P([
+                            html.Span("Confidence: ", className="fw-bold text-dark"),
+                            f"{item['score']:.2f}"
+                        ]),
+                        html.P([
+                            html.Span("Summary: ", className="fw-bold text-dark"),
+                            "Coming soon..."
+                        ])
+                    ])
                 ], id=rid, is_open=False)
             )
 
@@ -179,10 +188,11 @@ def register_yelp_callbacks(app):
 
     @app.callback(
         Output({'type': 'review-modal', 'index': dash.MATCH}, 'is_open'),
-        Input({'type': 'review-wrap', 'index': dash.MATCH}, 'n_clicks'),
-        Input({'type': 'close-modal', 'index': dash.MATCH}, 'n_clicks'),
+        Input({'type': 'review-wrap', 'index': dash.MATCH}, 'n_clicks'),     # when user clicks the card
+        Input({'type': 'review-modal', 'index': dash.MATCH}, 'n_dismiss'),   # when user clicks the top X
         State({'type': 'review-modal', 'index': dash.MATCH}, 'is_open'),
         prevent_initial_call=True
     )
-    def toggle_modal(open_clicks, close_clicks, is_open):
+    def toggle_modal(open_clicks, dismiss_clicks, is_open):
         return not is_open
+
