@@ -7,7 +7,8 @@ def get_yelp_tab():
         html.Div([
             html.Img(src="assets/Yelp_Logo.svg", style={"height": "60px"}),
         ], className="mb-3 text-center"),
-        
+
+        # Input Card
         dbc.Card([
             dbc.CardHeader("Find and Analyze Yelp Business Reviews"),
             dbc.CardBody([
@@ -30,9 +31,10 @@ def get_yelp_tab():
 
                 html.Div("Matching Businesses:", className="mt-4 mb-1 fw-bold"),
                 html.Div(id="business-list"),
-
             ])
-        ]),
+        ], className="mb-4"),
+
+        # Loading Results Area
         dcc.Loading(
             type="circle",
             children=html.Div(id="yelp-reviews-results", className="mt-4")
