@@ -86,19 +86,22 @@ h2, h4, .fw-bold {
     padding: 5px;
 }
 
-.review-card {
-    transition: transform 0.2s ease;
-    cursor: pointer;
-    height: 100%;
-}
   
-.review-card:hover {
-    transform: scale(1.02);
-    z-index: 2;
-}
 
 .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1rem;
 }
+
+.review-card {
+    transition: transform 0.2s ease;
+    cursor: pointer;
+    height: 100%;
+}
+
+.review-card:hover {
+    transform: scale(1.02);
+    z-index: 2;
+}
+  

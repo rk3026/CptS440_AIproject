@@ -5,6 +5,9 @@ import plotly.express as px
 from logic.yelp_data import *
 from collections import Counter
 
+def summarize_review(text):
+    return text[:80] + ("..." if len(text) > 80 else "")
+
 def register_yelp_callbacks(app):
     @app.callback(
         Output('yelp-reviews-results', 'children', allow_duplicate=True),
@@ -80,7 +83,7 @@ def register_yelp_callbacks(app):
         actual_star_counts = Counter()
         predicted_label_counts = Counter()
 
-        for r in reviews:
+        for i, r in enumerate(reviews):
             stars = int(r.get('stars', 0))
             sentiment_result = analyze_text_sentiment(r['text'])
             if not sentiment_result:
@@ -93,7 +96,9 @@ def register_yelp_callbacks(app):
             predicted_label_counts[predicted_label] += 1
 
             sentiment_data.append({
+                "id": i,
                 "text": r["text"],
+                "summary": summarize_review(r["text"]),
                 "stars": stars,
                 "predicted": predicted_label,
                 "score": score
@@ -125,17 +130,41 @@ def register_yelp_callbacks(app):
         ], className="mb-4")
 
         grid_cards = []
+        modals = []
         for item in sentiment_data:
-            preview = item["text"][:80] + ("..." if len(item["text"]) > 80 else "")
+            i = item["id"]
+            rid = {'type': 'review-modal', 'index': i}
             grid_cards.append(
-                dbc.Card(
-                    dbc.CardBody([
-                        html.H6(f"{item['stars']} Stars | Predicted: {item['predicted']} ({item['score']:.2f})",
-                                className="text-muted fw-bold mb-2"),
-                        html.P(preview, className="card-text", title=item["text"])
-                    ]),
-                    className="review-card"
+                html.Div(
+                    dbc.Card(
+                        dbc.CardBody([
+                            html.H6(f"{item['stars']} Stars | Predicted: {item['predicted']} ({item['score']:.2f})",
+                                    className="text-muted fw-bold mb-2"),
+                            html.P(item["summary"], className="card-text")
+                        ]),
+                        className="review-card"
+                    ),
+                    id={'type': 'review-wrap', 'index': i},
+                    n_clicks=0,
+                    style={"cursor": "pointer"}
                 )
+            )
+
+            modals.append(
+                dbc.Modal([
+                    dbc.ModalHeader("Review Details"),
+                    dbc.ModalBody([
+                        html.P(item["text"]),
+                        html.Hr(),
+                        html.P(f"Actual Stars: {item['stars']}"),
+                        html.P(f"Predicted: {item['predicted']}"),
+                        html.P(f"Confidence: {item['score']:.2f}"),
+                        html.P("Summary: (Coming soon...)")
+                    ]),
+                    dbc.ModalFooter(
+                        dbc.Button("Close", id={'type': 'close-modal', 'index': i}, className="ms-auto", n_clicks=0)
+                    )
+                ], id=rid, is_open=False)
             )
 
         return html.Div([
@@ -144,5 +173,16 @@ def register_yelp_callbacks(app):
             html.Hr(),
             html.H4(f"Total Reviews Analyzed: {len(sentiment_data)}"),
             pie_row,
-            html.Div(grid_cards, className="card-grid")
+            html.Div(grid_cards, className="card-grid"),
+            *modals
         ])
+
+    @app.callback(
+        Output({'type': 'review-modal', 'index': dash.MATCH}, 'is_open'),
+        Input({'type': 'review-wrap', 'index': dash.MATCH}, 'n_clicks'),
+        Input({'type': 'close-modal', 'index': dash.MATCH}, 'n_clicks'),
+        State({'type': 'review-modal', 'index': dash.MATCH}, 'is_open'),
+        prevent_initial_call=True
+    )
+    def toggle_modal(open_clicks, close_clicks, is_open):
+        return not is_open
