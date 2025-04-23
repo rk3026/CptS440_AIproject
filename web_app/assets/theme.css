@@ -1,5 +1,5 @@
 body {
-    background-color: #dfcab2;
+    background-color: #e0ceba;
     color: #212529;
     font-family: 'Segoe UI', sans-serif;
 }
@@ -82,6 +82,6 @@ h2, h4, .fw-bold {
 .graph-container {
     border: 5px solid #826b55;
     border-radius: 12px;
-    background-color: #ECE5DD;
-
+    background-color: #e0ceba;
+    padding: 5px;
 }
