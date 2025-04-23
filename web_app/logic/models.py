@@ -86,7 +86,7 @@ label_colors = {
     "negative": "red",
 
     # Ekman Emotions
-    "joy": "gold",
+    "joy": "#B8860B",  # DarkGoldenrod
     "sadness": "blue",
     "anger": "darkred",
     "fear": "purple",

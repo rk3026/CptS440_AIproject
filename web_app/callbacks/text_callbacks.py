@@ -1,6 +1,6 @@
 from dash import Input, Output, State
 from dash import html
-from logic.models import models, roberta_label_map, goemotions_to_ekman
+from logic.models import models, roberta_label_map, label_colors
 from collections import defaultdict
 from logic.model_handlers import *
 
@@ -25,17 +25,36 @@ def register_text_sentiment_callbacks(app):
                 output = handler.analyze(model, input_text)
 
                 if model_name in ["GoEmotions", "T5Emotions"]:
-                    ekman_str = ', '.join([f"{label} ({score})" for label, score in output])
+                    # Colorize each Ekman label with bold
+                    lines = []
+                    for label, score in output:
+                        color = label_colors.get(label.lower(), "black")
+                        lines.append(
+                            html.Span(
+                                f"{label} ({score})",
+                                style={
+                                    "color": color,
+                                    "fontWeight": "bold",
+                                    "marginRight": "10px"
+                                }
+                            )
+                        )
+
                     results.append(html.Div([
                         html.H5(f'{model_name}:'),
-                        html.P(f'Ekman Emotions: {ekman_str}')
+                        html.P(lines)
                     ]))
                 else:
                     label, score = output
                     if model_name == "Twitter RoBERTa":
                         label = roberta_label_map.get(label, label)
+                    color = label_colors.get(label.lower(), "black")
                     results.append(html.Div([
-                        html.H5(f'{model_name}: {label}'),
+                        html.H5(f'{model_name}:'),
+                        html.P(
+                            f'Sentiment: {label}',
+                            style={"color": color, "fontWeight": "bold"}
+                        ),
                         html.P(f'Score: {score}')
                     ]))
 
