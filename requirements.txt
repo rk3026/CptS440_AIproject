@@ -18,6 +18,7 @@ python-dotenv
 datasets
 evaluate
 accelerate
+sentencepiece
 
 #Bluesky:
 atproto
@@ -25,5 +26,6 @@ atproto
 #YELP:
 yelpapi
 
-#ROSS's BS
-sentencepiece
+#Model Evaluation
+seaborn
+matplotlib

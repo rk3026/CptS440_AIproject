@@ -99,6 +99,6 @@ def get_bluesky_tab():
         html.H4("Comments: ", className="fw-bold"),
         html.Div(
             id="bluesky-comment-results",
-            style={"minHeight": "300px"}
+            style={'maxHeight': '75vh', 'overflowY': 'auto', "minHeight": "300px"}
         )
     ])
