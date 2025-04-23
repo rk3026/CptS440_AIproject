@@ -6,9 +6,10 @@ import dash_bootstrap_components as dbc
 from atproto import Client
 import os
 from dotenv import load_dotenv
-from logic.models import models, roberta_label_map
+from logic.models import models, roberta_label_map, label_colors
 from collections import Counter
 import plotly.express as px
+
 
 load_dotenv()
 try:
@@ -111,9 +112,7 @@ def register_bluesky_callbacks(app):
         fig = px.pie(names=labels, values=values, title='Overall Sentiment Distribution')
         fig.update_traces(
             marker=dict(colors=[
-            'green'  if l=='Positive' else
-            'grey'   if l=='Neutral'  else
-            'red'    for l in labels
+                label_colors.get(label.lower(), 'lightblue') for label in labels
             ],
             line=dict(color='black', width=2)  # border between segments
             ),
@@ -151,21 +150,23 @@ def register_bluesky_callbacks(app):
         start = len(existing)
         cards = []
         for d in data[start:]:
-            css = 'text-success'   if d['label'] == 'Positive' else \
-                'text-secondary' if d['label'] == 'Neutral'  else \
-                'text-danger'
+            label = d['label']
+            color = label_colors.get(label.lower(), "lightblue")  # lowercase for GoEmotions too
 
-            is_reply = bool(d['parent'])  # True if it's a reply
-            if is_reply: title = f"Reply to '{d['parent'][:50]}...'"
+            is_reply = bool(d['parent'])
+            title = f"Reply to '{d['parent'][:50]}...'" if is_reply else "Comment"
 
             card = dbc.Card(
                 dbc.CardBody([
-                    html.H6(title, className='card-title') if is_reply else None,
+                    html.H6(title, className='card-title'),
                     html.P(d['text'], className='card-text'),
                     html.P(
-                        f"Sentiment: {d['label']} ({d['score']:.2f})",
-                        className=f"fw-bold {css}",
-                        style={'fontSize': '1.1rem'}
+                        f"Sentiment: {label} ({d['score']:.2f})",
+                        style={
+                            'fontSize': '1.1rem',
+                            'fontWeight': 'bold',
+                            'color': color
+                        }
                     )
                 ]),
                 className='mb-3',
