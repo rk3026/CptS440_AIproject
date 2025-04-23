@@ -1,9 +1,7 @@
-from dash import Input, Output, State
-from dash import html
+from dash import Input, Output, State, html
+import dash_bootstrap_components as dbc
 from logic.models import models, roberta_label_map, label_colors
-from collections import defaultdict
 from logic.model_handlers import *
-
 
 def register_text_sentiment_callbacks(app):
     @app.callback(
@@ -17,7 +15,11 @@ def register_text_sentiment_callbacks(app):
 
         for model_name, model in models.items():
             if isinstance(model, str):
-                results.append(html.Div([html.H5(f'{model_name}: Unsupported')]))
+                card = dbc.Card([
+                    dbc.CardHeader(f"{model_name}"),
+                    dbc.CardBody(html.P("Unsupported model"))
+                ], className="mb-3")
+                results.append(card)
                 continue
 
             try:
@@ -25,7 +27,6 @@ def register_text_sentiment_callbacks(app):
                 output = handler.analyze(model, input_text)
 
                 if model_name in ["GoEmotions", "T5Emotions"]:
-                    # Colorize each Ekman label with bold
                     lines = []
                     for label, score in output:
                         color = label_colors.get(label.lower(), "black")
@@ -40,27 +41,34 @@ def register_text_sentiment_callbacks(app):
                             )
                         )
 
-                    results.append(html.Div([
-                        html.H5(f'{model_name}:'),
-                        html.P(lines)
-                    ]))
+                    card = dbc.Card([
+                        dbc.CardHeader(f"{model_name}"),
+                        dbc.CardBody(html.P(lines))
+                    ], className="mb-3")
+
                 else:
                     label, score = output
                     if model_name == "Twitter RoBERTa":
                         label = roberta_label_map.get(label, label)
                     color = label_colors.get(label.lower(), "black")
-                    results.append(html.Div([
-                        html.H5(f'{model_name}:'),
-                        html.P(
-                            f'Sentiment: {label}',
-                            style={"color": color, "fontWeight": "bold"}
-                        ),
-                        html.P(f'Score: {score}')
-                    ]))
+
+                    card = dbc.Card([
+                        dbc.CardHeader(f"{model_name}"),
+                        dbc.CardBody([
+                            html.P(
+                                f'Sentiment: {label}',
+                                style={"color": color, "fontWeight": "bold"}
+                            ),
+                            html.P(f'Score: {score}')
+                        ])
+                    ], className="mb-3")
+
+                results.append(card)
 
             except Exception as e:
-                results.append(html.Div([
-                    html.H5(f'{model_name}: Error - {str(e)}')
-                ]))
+                results.append(dbc.Card([
+                    dbc.CardHeader(f"{model_name}"),
+                    dbc.CardBody(html.P(f"Error - {str(e)}"))
+                ], className="mb-3"))
 
         return html.Div(results)

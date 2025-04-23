@@ -101,35 +101,63 @@ def register_bluesky_callbacks(app):
     )
     def update_pie(data):
         fig = px.pie(names=[], values=[], title='Overall Sentiment Distribution')
+        fig.update_layout(
+            # paper_bgcolor="#FDFCFB",
+            # plot_bgcolor="#FDFCFB",
+            font=dict(family="Segoe UI", color="#3A3129"),
+            title=dict(
+                text="Overall Sentiment Distribution",
+                font=dict(size=22, color="#3A3129", family="Segoe UI", weight="bold"),
+            )
+        )
         if not data:
             return fig
 
         counts = Counter(d['label'] for d in data)
-        labels, values = list(counts.keys()), list(counts.values())
         
-        labels.sort()
+        sorted_items = sorted(counts.items()) 
+        labels = [label for label, _ in sorted_items]
+        values = [value for _, value in sorted_items]
 
-        fig = px.pie(names=labels, values=values, title='Overall Sentiment Distribution')
+        fig = px.pie(names=labels, values=values, title="Overall Sentiment Distribution")
+
         fig.update_traces(
-            marker=dict(colors=[
-                label_colors.get(label.lower(), 'lightblue') for label in labels
-            ],
-            line=dict(color='black', width=2)  # border between segments
+            marker=dict(
+                colors=[label_colors.get(label.lower(), "lightblue") for label in labels],
+                line=dict(color='#826b55', width=4)
             ),
-            hovertemplate='Sentiment = %{label}<br>Count = %{value}<extra></extra>'
-            
-            #pull=[0.05 if v > 0 else 0 for v in values]  # slight separation
+            hovertemplate='Sentiment = %{label}<br>Count = %{value}<extra></extra>',
+            textinfo='label+percent',
+            textposition='inside',
+            domain=dict(x=[0, 1], y=[0, 1])
         )
+
+        avg = sum(d['score'] for d in data) / len(data)
+
         fig.update_layout(
+            # paper_bgcolor="#FDFCFB",
+            # plot_bgcolor="#FDFCFB",
+            font=dict(family="Segoe UI", color="#3A3129"),
+            title=dict(
+                text="Overall Sentiment Distribution",
+                font=dict(size=22, color="#3A3129", family="Segoe UI", weight="bold"),
+            ),
+            # margin=dict(t=60, l=20, r=20, b=60),
             transition=dict(duration=500, easing='cubic-in-out'),
             uniformtext_minsize=12,
-            uniformtext_mode='hide'
-        )
-        avg = sum(d['score'] for d in data) / len(data)
-        fig.add_annotation(
-            text=f"Average confidence: {avg:.2f}",
-            x=0.5, y=-0.1, showarrow=False,
-            xref='paper', yref='paper'
+            uniformtext_mode='hide',
+            annotations=[
+            dict(
+                text=f"Average confidence: {avg:.2f}",
+                x=0.5,  # centered
+                y=-0.15,  # lower out of the chart area
+                showarrow=False,
+                xref='paper',
+                yref='paper',
+                font=dict(size=16, color="#5B4A3B", family="Segoe UI")
+            )
+        ]
+
         )
         return fig
 

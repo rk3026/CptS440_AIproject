@@ -82,7 +82,7 @@ goemotions_to_ekman = {
 label_colors = {
     # RoBERTa Sentiment Labels
     "positive": "green",
-    "neutral": "grey",
+    "neutral": "rgb(51, 76, 102)",
     "negative": "red",
 
     # Ekman Emotions

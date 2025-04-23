@@ -3,12 +3,34 @@ import dash_bootstrap_components as dbc
 import plotly.express as px
 
 # Create an initial empty pie chart with the correct colors
-initial_pie = px.pie(
-    names=["Positive", "Neutral", "Negative"],
-    values=[0, 0, 0],
-    title="Overall Sentiment Distribution"
-)
-initial_pie.update_traces(marker=dict(colors=["green", "grey", "red"]))
+# initial_pie = px.pie(
+#     names=["Positive", "Neutral", "Negative"],
+#     values=[0, 0, 0],
+#     title="Overall Sentiment Distribution"
+# )
+# initial_pie.update_layout(
+#     paper_bgcolor="#FDFCFB",
+#     plot_bgcolor="#FDFCFB",
+#     font=dict(family="Segoe UI", color="#3A3129"),
+#     title=dict(
+#         text="Overall Sentiment Distribution",
+#         font=dict(size=22, color="#3A3129", family="Segoe UI"),
+#         x=0.5,
+#         xanchor='center'
+#     ),
+#     showlegend=False,
+#     margin=dict(t=60, l=20, r=20, b=60),
+#     uniformtext_minsize=12,
+#     uniformtext_mode='hide'
+# )
+# initial_pie.update_traces(
+#     marker=dict(colors=["green", "grey", "red"],
+#         line=dict(color='#826b55', width=4)
+#     ),
+#     textinfo='none',
+#     hoverinfo='none',
+#     domain=dict(x=[0, 1], y=[0, 1])
+# )
 
 def get_bluesky_tab():
     return dcc.Tab(label="Bluesky Post Analysis", className="bluesky-tab", children=[
@@ -52,7 +74,7 @@ def get_bluesky_tab():
 
         html.Div(
             children=[
-            "Total comment processed: ",
+            html.H5("Total comment processed: ", className="fw-bold"),
             dcc.Loading(
                 id="loading-bluesky",
                 type="default",
@@ -69,9 +91,11 @@ def get_bluesky_tab():
         
         dcc.Graph(
             id="sentiment-summary-graph",
-            figure=initial_pie,
-            style={"minHeight": "300px"}
+            # figure=initial_pie,
+            className="graph-container",
+            style={"minHeight": "100px"}
         ),
+        html.Br(),
         html.H4("Comments: ", className="fw-bold"),
         html.Div(
             id="bluesky-comment-results",
