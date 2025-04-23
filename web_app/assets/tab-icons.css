@@ -16,6 +16,11 @@
     vertical-align: middle;
 }
 
+.loading-inline > div {
+    display: inline-block !important;
+    vertical-align: middle;
+}
+
 /* === Yelp Tab === */
 .yelp-tab::before {
     content: "";

@@ -24,7 +24,7 @@ def get_bluesky_tab():
         # Polling Interval
         dcc.Interval(
             id="bluesky-interval",
-            interval=500,
+            interval=700,
             disabled=True,
             n_intervals=0
         ),
@@ -49,12 +49,24 @@ def get_bluesky_tab():
         ], className="mb-4"),
 
         # Loading for Graph + Results
-        dcc.Loading(
-            id="loading-bluesky",
-            type="circle"
+
+        html.Div(
+            children=[
+            "Total comment processed: ",
+            dcc.Loading(
+                id="loading-bluesky",
+                type="default",
+                children=[
+                html.Span(id="bluesky-comment-count")
+                ],
+                className="loading-inline"
+            )
+            ],
+            className="mb-2 fw-bold text-end"
         ),
+
+        #html.Div(id="bluesky-comment-count", className="mb-2 fw-bold text-end"),
         
-        html.Div(id="bluesky-comment-count", className="mb-2 fw-bold text-end"),
         dcc.Graph(
             id="sentiment-summary-graph",
             figure=initial_pie,

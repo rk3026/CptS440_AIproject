@@ -170,5 +170,5 @@ def register_bluesky_callbacks(app):
     )
     def update_comment_count(data):
         if not data:
-            return "Total comments processed: 0"
-        return f"Total comments processed: {len(data)}"
+            return "0"
+        return f"{len(data)}"
