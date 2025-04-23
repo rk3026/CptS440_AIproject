@@ -182,11 +182,11 @@ def register_bluesky_callbacks(app):
             color = label_colors.get(label.lower(), "lightblue")  # lowercase for GoEmotions too
 
             is_reply = bool(d['parent'])
-            title = f"Reply to '{d['parent'][:50]}...'" if is_reply else "Comment"
+            if is_reply: title = f"Reply to '{d['parent'][:50]}...'" 
 
             card = dbc.Card(
                 dbc.CardBody([
-                    html.H6(title, className='card-title'),
+                    html.H6(title, className='card-title') if is_reply else None,
                     html.P(d['text'], className='card-text'),
                     html.P(
                         f"Sentiment: {label} ({d['score']:.2f})",

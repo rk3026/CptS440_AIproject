@@ -26,13 +26,14 @@ def register_text_sentiment_callbacks(app):
                 handler = model_handlers.get(model_name, GenericModelHandler())
                 output = handler.analyze(model, input_text)
 
+                # Multi-label models (GoEmotions, T5Emotions)
                 if model_name in ["GoEmotions", "T5Emotions"]:
                     lines = []
                     for label, score in output:
                         color = label_colors.get(label.lower(), "black")
                         lines.append(
                             html.Span(
-                                f"{label} ({score})",
+                                f"{label} ({score:.2f})",
                                 style={
                                     "color": color,
                                     "fontWeight": "bold",
@@ -46,6 +47,7 @@ def register_text_sentiment_callbacks(app):
                         dbc.CardBody(html.P(lines))
                     ], className="mb-3")
 
+                # Single-label models (like RoBERTa)
                 else:
                     label, score = output
                     if model_name == "Twitter RoBERTa":
@@ -59,7 +61,7 @@ def register_text_sentiment_callbacks(app):
                                 f'Sentiment: {label}',
                                 style={"color": color, "fontWeight": "bold"}
                             ),
-                            html.P(f'Score: {score}')
+                            html.P(f'Score: {score:.2f}')
                         ])
                     ], className="mb-3")
 
