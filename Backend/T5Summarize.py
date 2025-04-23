@@ -34,7 +34,7 @@ def summarize_user_input():
         num_beams=beam_size
     )
 
-    # Decode tokens -> strings
+    # Decode tokens to strings
     summary_output = transform.decode(model_output.tolist())
 
     # print the result
