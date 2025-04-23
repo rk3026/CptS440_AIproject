@@ -104,4 +104,7 @@ h2, h4, .fw-bold {
     transform: scale(1.02);
     z-index: 2;
 }
-  
+
+.modal-backdrop.show {
+    background-color: rgba(0, 0, 0, 0.35); /* semi-transparent black */
+}

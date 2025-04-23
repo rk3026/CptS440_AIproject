@@ -92,7 +92,14 @@ label_colors = {
     "fear": "purple",
     "surprise": "orange",
     "disgust": "olive",
-    # "neutral": "grey",  # lowercase for GoEmotions
+
+    # Star Ratings (5 to 1)
+    "5 stars": " #2ECC40",  # green
+    "4 stars": " #B3D944",  # lime/moss
+    "3 stars": "rgb(168, 149, 43)",  # yellow
+    "2 stars": " #FF8C00",  # dark orange
+    "1 stars": " #FF4136",  # red
+    "1 star": " #FF4136",  # red
 
     # Fallback
     "other": "lightblue"

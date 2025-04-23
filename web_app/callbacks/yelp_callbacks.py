@@ -3,6 +3,7 @@ import dash
 import dash_bootstrap_components as dbc
 import plotly.express as px
 from logic.yelp_data import *
+from logic.models import label_colors
 from collections import Counter
 
 def summarize_review(text):
@@ -107,12 +108,17 @@ def register_yelp_callbacks(app):
         pie_actual = px.pie(
             names=list(actual_star_counts.keys()),
             values=list(actual_star_counts.values()),
-            title="Actual Yelp Star Ratings"
+            title="Actual Yelp Star Ratings",
+            color=list(actual_star_counts.keys()),
+            color_discrete_map={k: label_colors.get(k.lower(), "lightblue") for k in actual_star_counts}
         )
+
         pie_predicted = px.pie(
             names=list(predicted_label_counts.keys()),
             values=list(predicted_label_counts.values()),
-            title="Predicted Sentiment Labels"
+            title="Predicted Sentiment Labels",
+            color=list(predicted_label_counts.keys()),
+            color_discrete_map={k: label_colors.get(k.lower(), "lightblue") for k in predicted_label_counts}
         )
 
         for fig in [pie_actual, pie_predicted]:
@@ -129,40 +135,52 @@ def register_yelp_callbacks(app):
             dbc.Col(dcc.Graph(figure=pie_predicted), md=6)
         ], className="mb-4")
 
-        grid_cards = []
+        grouped_by_star = {i: [] for i in range(5, 0, -1)}
         modals = []
+
         for item in sentiment_data:
             i = item["id"]
             rid = {'type': 'review-modal', 'index': i}
-            grid_cards.append(
-                html.Div(
-                    dbc.Card(
-                        dbc.CardBody([
-                            html.H6(f"{item['stars']} Stars | Predicted: {item['predicted']} ({item['score']:.2f})",
-                                    className="text-muted fw-bold mb-2"),
-                            html.P(item["summary"], className="card-text")
-                        ]),
-                        className="review-card"
-                    ),
-                    id={'type': 'review-wrap', 'index': i},
-                    n_clicks=0,
-                    style={"cursor": "pointer"}
-                )
+
+            star_key = f"{item['stars']} stars"
+            star_color = label_colors.get(star_key.lower(), "black")
+            pred_color = label_colors.get(item['predicted'].lower(), "black")
+
+            card = html.Div(
+                dbc.Card(
+                    dbc.CardBody([
+                        html.H6([
+                            html.Span(f"{item['stars']} Stars", style={"color": star_color}),
+                            " | ",
+                            html.Span(f"Predicted: {item['predicted']} ({item['score']:.2f})", style={"color": pred_color})
+                        ], className="fw-bold mb-2"),
+                        html.P(item["summary"], className="card-text")
+                    ]),
+                    className="review-card",
+                    style={
+                        "borderColor": "#826B55",
+                        "backgroundColor": "#F8F4F2",
+                        "borderRadius": "10px"
+                    }
+                ),
+                id={'type': 'review-wrap', 'index': i},
+                n_clicks=0,
+                style={"cursor": "pointer"}
             )
+
+            grouped_by_star[item['stars']].append(card)
 
             modals.append(
                 dbc.Modal([
                     dbc.ModalHeader(html.H4("Review Details", className="fw-bold text-primary")),
                     dbc.ModalBody([
-                        html.P(item["text"]),
-                        html.Hr(),
                         html.P([
                             html.Span("Actual Stars: ", className="fw-bold text-dark"),
-                            f"{item['stars']}"
+                            html.Span(f"{item['stars']}", style={"color": star_color, "fontWeight": "bold"})
                         ]),
                         html.P([
                             html.Span("Predicted: ", className="fw-bold text-dark"),
-                            f"{item['predicted']}"
+                            html.Span(item['predicted'], style={"color": pred_color, "fontWeight": "bold"})
                         ]),
                         html.P([
                             html.Span("Confidence: ", className="fw-bold text-dark"),
@@ -171,9 +189,19 @@ def register_yelp_callbacks(app):
                         html.P([
                             html.Span("Summary: ", className="fw-bold text-dark"),
                             "Coming soon..."
+                        ]),
+                        html.Hr(),
+                        html.P([
+                            html.Span("Review Text: ", className="fw-bold text-dark"),
+                            item["text"]
                         ])
                     ])
-                ], id=rid, is_open=False)
+                ],
+                id=rid,
+                is_open=False,
+                style={"backgroundColor": "rgba(0, 0, 0, 0.35)"},
+                backdrop=True  # enables the modal overlay
+                )
             )
 
         return html.Div([
@@ -182,17 +210,21 @@ def register_yelp_callbacks(app):
             html.Hr(),
             html.H4(f"Total Reviews Analyzed: {len(sentiment_data)}"),
             pie_row,
-            html.Div(grid_cards, className="card-grid"),
+            *[
+                html.Div([
+                    html.H5(f"{stars} Star Reviews", className="mt-4 mb-2 text-dark fw-bold"),
+                    html.Div(grouped_by_star[stars], className="card-grid")
+                ]) for stars in grouped_by_star if grouped_by_star[stars]
+            ],
             *modals
         ])
 
     @app.callback(
         Output({'type': 'review-modal', 'index': dash.MATCH}, 'is_open'),
-        Input({'type': 'review-wrap', 'index': dash.MATCH}, 'n_clicks'),     # when user clicks the card
-        Input({'type': 'review-modal', 'index': dash.MATCH}, 'n_dismiss'),   # when user clicks the top X
+        Input({'type': 'review-wrap', 'index': dash.MATCH}, 'n_clicks'),
+        Input({'type': 'review-modal', 'index': dash.MATCH}, 'n_dismiss'),
         State({'type': 'review-modal', 'index': dash.MATCH}, 'is_open'),
         prevent_initial_call=True
     )
     def toggle_modal(open_clicks, dismiss_clicks, is_open):
         return not is_open
-
