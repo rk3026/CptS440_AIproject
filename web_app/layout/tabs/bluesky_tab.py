@@ -72,6 +72,7 @@ def get_bluesky_tab():
             figure=initial_pie,
             style={"minHeight": "300px"}
         ),
+        html.H4("Comments: ", className="fw-bold"),
         html.Div(
             id="bluesky-comment-results",
             style={"minHeight": "300px"}

@@ -105,6 +105,8 @@ def register_bluesky_callbacks(app):
 
         counts = Counter(d['label'] for d in data)
         labels, values = list(counts.keys()), list(counts.values())
+        
+        labels.sort()
 
         fig = px.pie(names=labels, values=values, title='Overall Sentiment Distribution')
         fig.update_traces(
@@ -133,9 +135,9 @@ def register_bluesky_callbacks(app):
         return fig
 
     @app.callback(
-        Output('bluesky-comment-results','children'),
-        Input('bluesky-sentiments-store','data'),
-        State('bluesky-comment-results','children')
+    Output('bluesky-comment-results','children'),
+    Input('bluesky-sentiments-store','data'),
+    State('bluesky-comment-results','children')
     )
     def append_cards(data, existing):
         # Clear old comments when starting a new analysis
@@ -149,20 +151,30 @@ def register_bluesky_callbacks(app):
         start = len(existing)
         cards = []
         for d in data[start:]:
-            css = 'text-success'   if d['label']=='Positive' else \
-                  'text-secondary' if d['label']=='Neutral'  else \
-                  'text-danger'
-            title = f"Reply to '{d['parent'][:50]}...'" if d['parent'] else "Comment"
-            cards.append(
-                dbc.Card(dbc.CardBody([
-                    html.H5(title, className='card-title'),
+            css = 'text-success'   if d['label'] == 'Positive' else \
+                'text-secondary' if d['label'] == 'Neutral'  else \
+                'text-danger'
+
+            is_reply = bool(d['parent'])  # True if it's a reply
+            if is_reply: title = f"Reply to '{d['parent'][:50]}...'"
+
+            card = dbc.Card(
+                dbc.CardBody([
+                    html.H6(title, className='card-title') if is_reply else None,
                     html.P(d['text'], className='card-text'),
-                    html.P(f"Sentiment: {d['label']} ({d['score']:.2f})",
-                           className=f"fw-bold {css}",
-                           style={'fontSize':'1.1rem'})
-                ]), className='mb-3')
+                    html.P(
+                        f"Sentiment: {d['label']} ({d['score']:.2f})",
+                        className=f"fw-bold {css}",
+                        style={'fontSize': '1.1rem'}
+                    )
+                ]),
+                className='mb-3',
+                style={"marginLeft": "30px"} if is_reply else {}
             )
+            cards.append(card)
+
         return existing + cards
+
     
     @app.callback(
         Output('bluesky-comment-count', 'children'),
