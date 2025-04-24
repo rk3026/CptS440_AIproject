@@ -52,16 +52,20 @@ def register_yelp_callbacks(app):
         if not matches:
             return html.Div("No businesses found.", className="text-danger")
 
-        return html.Ul([
-            html.Li(
-                html.Button(
-                    f"{b['name']} ({b['location']['city']}, {b['location']['state']})",
-                    id={'type': 'business-button', 'index': b['business_id']},
-                    n_clicks=0,
-                    className="btn btn-link"
-                )
-            ) for b in matches
-        ])
+        return dbc.ListGroup([
+                    dbc.ListGroupItem(
+                        html.Div([
+                            html.H6(b['name'], className="mb-1 fw-bold"),
+                            html.Small(f"{b['location']['city']}, {b['location']['state']}", className="text-muted")
+                        ]),
+                        id={'type': 'business-button', 'index': b['business_id']},
+                        action=True,
+                        n_clicks=0,
+                        style={"cursor": "pointer"}
+                    )
+                    for b in matches
+                ], flush=True)
+
 
     @app.callback(
         Output('yelp-reviews-results', 'children'),
