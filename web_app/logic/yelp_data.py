@@ -68,7 +68,7 @@ def load_reviews_for_business_from_db(business_id, limit=None):
     conn = sqlite3.connect(YELP_REVIEW_DB)
     cursor = conn.cursor()
 
-    query = f'SELECT text FROM {TABLE_REVIEWS} WHERE business_id = ?'
+    query = f'SELECT text, stars FROM {TABLE_REVIEWS} WHERE business_id = ?'
     params = [business_id]
 
     if limit:
@@ -76,9 +76,34 @@ def load_reviews_for_business_from_db(business_id, limit=None):
         params.append(limit)
 
     cursor.execute(query, params)
-    reviews = [{'text': row[0]} for row in cursor.fetchall()]
+    reviews = [{'text': row[0], 'stars': row[1]} for row in cursor.fetchall()]
     conn.close()
     return reviews
+
+def get_business_info(business_id):
+    conn = sqlite3.connect(YELP_REVIEW_DB)
+    cursor = conn.cursor()
+
+    query = f'''
+        SELECT name, address, city, state, postal_code
+        FROM {TABLE_BUSINESSES}
+        WHERE business_id = ?
+    '''
+    cursor.execute(query, (business_id,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return {
+            'name': row[0],
+            'address': row[1],
+            'city': row[2],
+            'state': row[3],
+            'postal_code': row[4]
+        }
+    else:
+        return None
+
 
 # === Sentiment Analysis ===
 

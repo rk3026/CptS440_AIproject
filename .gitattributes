@@ -1,0 +1,5 @@
+t5-emotions/* filter=lfs diff=lfs merge=lfs -text
+t5-emotions/model.safetensors filter=lfs diff=lfs merge=lfs -text
+
+models/t5-emotions/* filter=lfs diff=lfs merge=lfs -text
+models/t5-emotions/model.safetensors filter=lfs diff=lfs merge=lfs -text

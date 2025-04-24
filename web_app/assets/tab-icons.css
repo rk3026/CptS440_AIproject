@@ -1,0 +1,46 @@
+/* Align the icons with the tab text */
+.dash-tabs .tab {
+    display: flex;
+    align-items: center;
+}
+
+/* === Bluesky Tab === */
+.bluesky-tab::before {
+    content: "";
+    background: url("/assets/Bluesky_Logo.svg") no-repeat center center;
+    background-size: contain;
+    display: inline-block;
+    height: 20px;
+    width: 20px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+.loading-inline > div {
+    display: inline-block !important;
+    vertical-align: middle;
+}
+
+/* === Yelp Tab === */
+.yelp-tab::before {
+    content: "";
+    background: url("/assets/Yelp_Logo.svg") no-repeat center center;
+    background-size: contain;
+    display: inline-block;
+    height: 20px;
+    width: 20px;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* === Text Tab === */
+.text-tab::before {
+    content: "";
+    background: url("/assets/Text_Logo.svg") no-repeat center center;
+    background-size: contain;
+    display: inline-block;
+    height: 20px;
+    width: 20px;
+    margin-right: 6px;
+    vertical-align: middle;
+}

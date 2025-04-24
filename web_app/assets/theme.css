@@ -1,0 +1,87 @@
+body {
+    background-color: #e0ceba;
+    color: #212529;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Cards */
+.card {
+    background-color: #FDFCFB;
+    border: 1px solid #D3CFC8;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border-radius: 12px; /* ⬅️ Rounded corners */
+}
+
+.card-header {
+    background-color: #E3DBD3;
+    font-weight: bold;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+.card-body {
+    background-color: #FDFCFB;
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+
+/* Tabs container */
+.dash-tabs {
+    background-color: #EAE1D8;
+    border-radius: 8px;
+    padding: 0.25rem;
+}
+
+/* Each tab */
+.tab {
+    color: #333 !important;
+    border-radius: 6px;
+    margin-right: 6px;
+    padding: 0.4rem 1rem;
+}
+
+.tab--selected {
+    background-color: #D6C9BD !important;
+    font-weight: bold;
+}
+
+/* Inputs & textareas */
+input[type="text"],
+textarea,
+.Select-control {
+    background-color: #FCFAF8 !important;
+    border: 1px solid #C5BFB9 !important;
+    color: #212529 !important;
+    border-radius: 6px; /* ⬅️ Rounded input fields */
+    padding: 0.5rem;
+}
+
+/* Buttons */
+.btn-primary {
+    background-color: #0d88b8;
+    border-color: #0d88b8;
+    border-radius: 6px;
+}
+
+.btn-primary:hover {
+    background-color: #9C7B56;
+    border-color: #896A4A;
+}
+
+/* Piechart loading spinner fix */
+.loading-inline > div {
+    display: inline-block !important;
+    vertical-align: middle;
+}
+
+/* General headers */
+h2, h4, .fw-bold {
+    color: #3A3129;
+}
+
+.graph-container {
+    border: 5px solid #826b55;
+    border-radius: 12px;
+    background-color: #e0ceba;
+    padding: 5px;
+}
