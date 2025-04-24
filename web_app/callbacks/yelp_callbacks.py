@@ -1,23 +1,22 @@
-from dash import Input, Output, State, html, dash_table
+from dash import Input, Output, State, html, dcc, ctx
 import dash
-from logic.yelp_data import *
 import dash_bootstrap_components as dbc
-from dash import Input, Output, State, html
-import dash_bootstrap_components as dbc
+import plotly.express as px
 from logic.yelp_data import *
+from logic.models import label_colors
 from collections import Counter
-from dash import ctx
 
+def summarize_review(text):
+    return text[:80] + ("..." if len(text) > 80 else "")
 
 def register_yelp_callbacks(app):
-    # Clear results on any button click
     @app.callback(
         Output('yelp-reviews-results', 'children', allow_duplicate=True),
         Input({'type': 'business-button', 'index': dash.ALL}, 'n_clicks'),
         prevent_initial_call=True
     )
     def clear_reviews(_):
-        return ""  # Clears the content (and triggers spinner next)
+        return ""
 
     @app.callback(
         Output('state-dropdown', 'options'),
@@ -48,23 +47,25 @@ def register_yelp_callbacks(app):
     )
     def update_business_list(name_input, state, city):
         name_input = name_input or ""
-
         matches = search_yelp_business_from_db(name_input, state, city, max_results=20)
 
         if not matches:
             return html.Div("No businesses found.", className="text-danger")
 
-        return html.Ul([
-            html.Li(
-                html.Button(
-                    f"{b['name']} ({b['location']['city']}, {b['location']['state']})",
-                    id={'type': 'business-button', 'index': b['business_id']},
-                    n_clicks=0,
-                    className="btn btn-link"
-                )
-            )
-            for b in matches
-        ])
+        return dbc.ListGroup([
+                    dbc.ListGroupItem(
+                        html.Div([
+                            html.H6(b['name'], className="mb-1 fw-bold"),
+                            html.Small(f"{b['location']['city']}, {b['location']['state']}", className="text-muted")
+                        ]),
+                        id={'type': 'business-button', 'index': b['business_id']},
+                        action=True,
+                        n_clicks=0,
+                        style={"cursor": "pointer"}
+                    )
+                    for b in matches
+                ], flush=True)
+
 
     @app.callback(
         Output('yelp-reviews-results', 'children'),
@@ -73,13 +74,10 @@ def register_yelp_callbacks(app):
         prevent_initial_call=True
     )
     def analyze_yelp_reviews(n_clicks_list, ids):
-        # Guard: Ignore callback if nothing has actually been clicked
         if not ctx.triggered_id or not any(n > 0 for n in n_clicks_list):
             return dash.no_update
 
-        # Get the business_id from the clicked button
         business_id = ctx.triggered_id['index']
-
         reviews = load_reviews_for_business_from_db(business_id, limit=100)
         business_info = get_business_info(business_id)
 
@@ -90,9 +88,8 @@ def register_yelp_callbacks(app):
         actual_star_counts = Counter()
         predicted_label_counts = Counter()
 
-        for r in reviews:
+        for i, r in enumerate(reviews):
             stars = int(r.get('stars', 0))
-
             sentiment_result = analyze_text_sentiment(r['text'])
             if not sentiment_result:
                 continue
@@ -100,60 +97,138 @@ def register_yelp_callbacks(app):
             predicted_label = sentiment_result[0]['label']
             score = sentiment_result[0]['score']
 
-            if stars in [1, 2, 3, 4, 5]:
-                actual_star_counts[f'{stars}_star'] += 1
-            if predicted_label in ["1 star", "2 stars", "3 stars", "4 stars", "5 stars"]:
-                predicted_label_counts[predicted_label] += 1
+            actual_star_counts[f"{stars} Stars"] += 1
+            predicted_label_counts[predicted_label] += 1
 
             sentiment_data.append({
-                'Review Text': r['text'],
-                'Actual Stars': stars,
-                'Predicted Sentiment': predicted_label,
-                'Confidence': f"{score:.2f}"
+                "id": i,
+                "text": r["text"],
+                "summary": summarize_review(r["text"]),
+                "stars": stars,
+                "predicted": predicted_label,
+                "score": score
             })
 
-        business_header = html.Div([
-            html.H5("Analyzing Reviews for Business:"),
-            html.H6(business_info['name']),
-            html.P(f"{business_info['address']}, {business_info['city']}, "
-                f"{business_info['state']} {business_info['postal_code']}")
-        ], className="mb-3")
-
-        summary = html.Div([
-            business_header,
-            html.H5("Review Summary"),
-            html.P(f"Total Reviews Analyzed: {len(sentiment_data)}"),
-            html.H6("Actual Star Ratings:"),
-            html.Ul([
-                html.Li(f"5 Stars: {actual_star_counts['5_star']}"),
-                html.Li(f"4 Stars: {actual_star_counts['4_star']}"),
-                html.Li(f"3 Stars: {actual_star_counts['3_star']}"),
-                html.Li(f"2 Stars: {actual_star_counts['2_star']}"),
-                html.Li(f"1 Star: {actual_star_counts['1_star']}")
-            ]),
-            html.H6("Predicted Sentiment Labels (via BERT):"),
-            html.Ul([
-                html.Li(f"5 Stars: {predicted_label_counts['5 stars']}"),
-                html.Li(f"4 Stars: {predicted_label_counts['4 stars']}"),
-                html.Li(f"3 Stars: {predicted_label_counts['3 stars']}"),
-                html.Li(f"2 Stars: {predicted_label_counts['2 stars']}"),
-                html.Li(f"1 Star: {predicted_label_counts['1 star']}")
-            ]),
-        ])
-
-        table = dash_table.DataTable(
-            columns=[
-                {'name': 'Review Text', 'id': 'Review Text'},
-                {'name': 'Actual Stars', 'id': 'Actual Stars'},
-                {'name': 'Predicted Sentiment', 'id': 'Predicted Sentiment'},
-                {'name': 'Confidence', 'id': 'Confidence'}
-            ],
-            data=sentiment_data,
-            style_table={'overflowX': 'auto'},
-            style_cell={'textAlign': 'left'},
-            style_header={'backgroundColor': 'lightgrey', 'fontWeight': 'bold'},
-            style_data={'whiteSpace': 'normal', 'height': 'auto'}
+        pie_actual = px.pie(
+            names=list(actual_star_counts.keys()),
+            values=list(actual_star_counts.values()),
+            title="Actual Yelp Star Ratings",
+            color=list(actual_star_counts.keys()),
+            color_discrete_map={k: label_colors.get(k.lower(), "lightblue") for k in actual_star_counts}
         )
 
-        return html.Div([summary, html.Hr(), table])
+        pie_predicted = px.pie(
+            names=list(predicted_label_counts.keys()),
+            values=list(predicted_label_counts.values()),
+            title="Predicted Sentiment Labels",
+            color=list(predicted_label_counts.keys()),
+            color_discrete_map={k: label_colors.get(k.lower(), "lightblue") for k in predicted_label_counts}
+        )
 
+        for fig in [pie_actual, pie_predicted]:
+            fig.update_layout(
+                height=300,
+                margin=dict(t=40, l=0, r=0, b=20),
+                paper_bgcolor="#FDFCFB",
+                plot_bgcolor="#FDFCFB",
+                font=dict(color="#3A3129", family="Segoe UI")
+            )
+
+        pie_row = dbc.Row([
+            dbc.Col(dcc.Graph(figure=pie_actual), md=6),
+            dbc.Col(dcc.Graph(figure=pie_predicted), md=6)
+        ], className="mb-4")
+
+        grouped_by_star = {i: [] for i in range(5, 0, -1)}
+        modals = []
+
+        for item in sentiment_data:
+            i = item["id"]
+            rid = {'type': 'review-modal', 'index': i}
+
+            star_key = f"{item['stars']} stars"
+            star_color = label_colors.get(star_key.lower(), "black")
+            pred_color = label_colors.get(item['predicted'].lower(), "black")
+
+            card = html.Div(
+                dbc.Card(
+                    dbc.CardBody([
+                        html.H6([
+                            html.Span(f"{item['stars']} Stars", style={"color": star_color}),
+                            " | ",
+                            html.Span(f"Predicted: {item['predicted']} ({item['score']:.2f})", style={"color": pred_color})
+                        ], className="fw-bold mb-2"),
+                        html.P(item["summary"], className="card-text")
+                    ]),
+                    className="review-card",
+                    style={
+                        "borderColor": "#826B55",
+                        "backgroundColor": "#F8F4F2",
+                        "borderRadius": "10px"
+                    }
+                ),
+                id={'type': 'review-wrap', 'index': i},
+                n_clicks=0,
+                style={"cursor": "pointer"}
+            )
+
+            grouped_by_star[item['stars']].append(card)
+
+            modals.append(
+                dbc.Modal([
+                    dbc.ModalHeader(html.H4("Review Details", className="fw-bold text-primary")),
+                    dbc.ModalBody([
+                        html.P([
+                            html.Span("Actual Stars: ", className="fw-bold text-dark"),
+                            html.Span(f"{item['stars']}", style={"color": star_color, "fontWeight": "bold"})
+                        ]),
+                        html.P([
+                            html.Span("Predicted: ", className="fw-bold text-dark"),
+                            html.Span(item['predicted'], style={"color": pred_color, "fontWeight": "bold"})
+                        ]),
+                        html.P([
+                            html.Span("Confidence: ", className="fw-bold text-dark"),
+                            f"{item['score']:.2f}"
+                        ]),
+                        html.P([
+                            html.Span("Summary: ", className="fw-bold text-dark"),
+                            "Coming soon..."
+                        ]),
+                        html.Hr(),
+                        html.P([
+                            html.Span("Review Text: ", className="fw-bold text-dark"),
+                            item["text"]
+                        ])
+                    ])
+                ],
+                id=rid,
+                is_open=False,
+                style={"backgroundColor": "rgba(0, 0, 0, 0.35)"},
+                backdrop=True  # enables the modal overlay
+                )
+            )
+
+        return html.Div([
+            html.H2(f"Analyzing Reviews for: {business_info['name']}"),
+            html.H6(f"{business_info['address']}, {business_info['city']}, {business_info['state']} {business_info['postal_code']}"),
+            html.Hr(),
+            html.H4(f"Total Reviews Analyzed: {len(sentiment_data)}"),
+            pie_row,
+            *[
+                html.Div([
+                    html.H5(f"{stars} Star Reviews", className="mt-4 mb-2 text-dark fw-bold"),
+                    html.Div(grouped_by_star[stars], className="card-grid")
+                ]) for stars in grouped_by_star if grouped_by_star[stars]
+            ],
+            *modals
+        ])
+
+    @app.callback(
+        Output({'type': 'review-modal', 'index': dash.MATCH}, 'is_open'),
+        Input({'type': 'review-wrap', 'index': dash.MATCH}, 'n_clicks'),
+        Input({'type': 'review-modal', 'index': dash.MATCH}, 'n_dismiss'),
+        State({'type': 'review-modal', 'index': dash.MATCH}, 'is_open'),
+        prevent_initial_call=True
+    )
+    def toggle_modal(open_clicks, dismiss_clicks, is_open):
+        return not is_open
