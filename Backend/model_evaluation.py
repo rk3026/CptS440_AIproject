@@ -1,5 +1,6 @@
 '''
 This file evaluates all of the models used in the app and generates a PDF report of the evaluation metrics.
+It also generates a confusion matrix for the Yelp BERT Model.
 '''
 
 import torch
