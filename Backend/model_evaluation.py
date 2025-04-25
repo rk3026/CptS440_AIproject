@@ -1,6 +1,19 @@
 '''
-This file evaluates all of the models used in the app and generates a PDF report of the evaluation metrics.
-It also generates a confusion matrix for the Yelp BERT Model.
+This file evaluates all of the models used in the system with several metrics.
+
+Evaluation Metrics:
+- Accuracy: Proportion of correct predictions.
+- F1 Score: Harmonic mean of precision and recall, useful for imbalanced datasets. Balances false positives and false negatives.
+    Precision: Of all the predicted positives, how many were actually positive?
+    Recall: Of all the actual positives, how many were correctly predicted?
+- Micro F1: F1 score calculated globally by counting total true positives, false negatives, and false positives.
+- Macro F1: F1 score calculated for each label, then averaged (treats all labels equally).
+- Hamming Loss: Fraction of incorrect labels (used in multi-label classification).
+- Standard Deviation: Measures variability between predicted and true labels.
+- ROC Curve (Receiver Operating Characteristic): A plot of True Positive Rate vs. False Positive Rate across classification thresholds.
+- AUC (Area Under the Curve): A single value summarizing the ROC curve's performance.
+- MAE (Mean Absolute Error): Average absolute difference between predicted and true ratings.
+- Tolerance Accuracy: Proportion of predictions within ±1 of the true rating.
 '''
 
 import torch
@@ -9,13 +22,19 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
+import numpy as np
 
 from datasets import load_dataset
-from transformers import pipeline, T5Tokenizer, T5ForConditionalGeneration
-from sklearn.preprocessing import MultiLabelBinarizer
+from transformers import pipeline, T5Tokenizer, T5ForConditionalGeneration # HuggingFace
+from sklearn.preprocessing import MultiLabelBinarizer, label_binarize
 from sklearn.metrics import (
-    f1_score, hamming_loss, accuracy_score, classification_report,
-    mean_absolute_error, confusion_matrix
+    f1_score,
+    hamming_loss,
+    accuracy_score,
+    classification_report,
+    mean_absolute_error,
+    confusion_matrix,
+    roc_auc_score
 )
 
 import os
@@ -64,6 +83,27 @@ def twitter_predict(texts, pipe):
     label_map = {"LABEL_0": 0, "LABEL_1": 1, "LABEL_2": 2}
     return [label_map[pipe(text)[0]["label"]] for text in tqdm(texts, desc="Twitter RoBERTa Predicting")]
 
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch.nn.functional as F
+def twitter_predict_with_probs(texts):
+    model_name = "cardiffnlp/twitter-roberta-base-sentiment"
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSequenceClassification.from_pretrained(model_name)
+    model.eval()
+
+    preds = []
+    probs = []
+    for text in tqdm(texts, desc="Twitter Predicting"):
+        inputs = tokenizer(text, return_tensors="pt", truncation=True, padding=True, max_length=512)
+        with torch.no_grad():
+            outputs = model(**inputs)
+            logits = outputs.logits
+            softmax_probs = F.softmax(logits, dim=1).squeeze().numpy()
+            probs.append(softmax_probs)
+            preds.append(int(torch.argmax(logits)))
+    return preds, probs
+
+
 def yelp_predict(texts, pipe):
     preds = []
     for text in tqdm(texts, desc="Yelp BERT Predicting"):
@@ -102,13 +142,27 @@ def evaluate_multilabel(true_labels, pred_labels, label_names, name):
     print(classification_report(y_true, y_pred, target_names=label_names, zero_division=0))
     record_result(name, metrics)
 
-def evaluate_singlelabel(true, pred, model_name, labels=None, target_names=None):
+def evaluate_singlelabel(true, pred, model_name, labels=None, target_names=None, probs=None):
     metrics = {
         "Micro F1": f1_score(true, pred, average='micro'),
         "Macro F1": f1_score(true, pred, average='macro'),
         "Accuracy": accuracy_score(true, pred),
-        "Hamming Loss": hamming_loss(true, pred)
+        "Hamming Loss": hamming_loss(true, pred),
+        "Standard Deviation": np.std(np.array(pred) - np.array(true))
     }
+
+    # AUC (needs probs and binarized labels)
+    if probs is not None and labels is not None and len(set(true)) > 1:
+        y_true_bin = label_binarize(true, classes=labels)
+        try:
+            auc = roc_auc_score(y_true_bin, probs, average='macro', multi_class='ovr')
+            metrics["AUC"] = auc
+        except ValueError as e:
+            print(f"Skipping AUC for {model_name}: {e}")
+            metrics["AUC"] = None
+    else:
+        metrics["AUC"] = None
+
     print(f"\n----- {model_name} Evaluation -----")
     print(metrics)
     print(f"----- {model_name} Classification Report -----")
@@ -143,6 +197,28 @@ def plot_conf_matrix(true, pred, labels, model_name, evaluation_dir="evaluation"
     plt.savefig(filepath)
     plt.close(fig)
 
+from sklearn.metrics import roc_curve
+import matplotlib.pyplot as plt
+def plot_roc_curve(y_true, y_probs, model_name, labels, save_dir="evaluation"):
+    y_true_bin = label_binarize(y_true, classes=labels)
+    plt.figure(figsize=(8, 6))
+    for i, label in enumerate(labels):
+        fpr, tpr, _ = roc_curve(y_true_bin[:, i], [p[i] for p in y_probs])
+        plt.plot(fpr, tpr, label=f"{label} (class {i})")
+
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.title(f"ROC Curve - {model_name}")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.legend(loc="lower right")
+    plt.grid(True)
+    plt.tight_layout()
+    
+    os.makedirs(save_dir, exist_ok=True)
+    plt.savefig(os.path.join(save_dir, f"{model_name.lower().replace(' ', '_')}_roc_curve.pdf"))
+    plt.close()
+
+
 def export_report(results, evaluation_dir="evaluation"):
     os.makedirs(evaluation_dir, exist_ok=True)
     df = pd.DataFrame(results).fillna("–")
@@ -161,49 +237,98 @@ def export_report(results, evaluation_dir="evaluation"):
 # ========================= MAIN ========================= #
 
 def main(max_samples=None):
+    #----------Evaluate T5Emotions------------#
     # Load GoEmotions test data
+    print("Loading GoEmotions Data...")
     goemo = load_dataset("go_emotions")
+    print("GoEmotions Data Loaded!")
     test_data = goemo["test"]
+    # Reduce the amount of data to test on if specified:
     if max_samples:
         test_data = test_data.select(range(min(max_samples, len(test_data))))
     texts = [x["text"] for x in test_data]
     true_labels = [[test_data.features["labels"].feature.names[i] for i in x["labels"]] for x in test_data]
     label_names = test_data.features["labels"].feature.names
+    # Print an example row:
+    print(f"Row 0 text: {texts[0]}")
+    print(f"Row 0 actual/truth label: {test_data.features["labels"].feature.names[0]}")
 
-    # T5Emotions
+    # T5Emotions (our custom fine-tuned model)
+    print("Loading T5Emotions Model...")
     t5_model, t5_tokenizer = load_t5_emotions_model()
+    print("T5Emotions Model Loaded!")
     t5_preds = t5_predict(texts, label_names, t5_model, t5_tokenizer)
+    print("Evaluating T5Emotions...")
     evaluate_multilabel(true_labels, t5_preds, label_names, "T5Emotions")
+    print("T5Emotions Evaluation Complete!")
+    #-------------------------------------------------------#
 
-    # GoEmotions
+    #----------Evaluate roberta-base-go_emotions------------#
+    # SamLowe/roberta-base-go_emotions
+    print("Loading SamLowe/roberta-base-go_emotions Model...")
     go_pipe = load_goemotions_pipeline()
+    print("SamLowe/roberta-base-go_emotions Model Loaded!")
     go_preds = goemotions_predict(texts, label_names, go_pipe)
-    evaluate_multilabel(true_labels, go_preds, label_names, "GoEmotions")
+    print("Evaluating SamLowe/roberta-base-go_emotions...")
+    evaluate_multilabel(true_labels, go_preds, label_names, "SamLowe/roberta-base-go_emotions")
+    print("SamLowe/roberta-base-go_emotions Evaluation Complete!")
+    #-------------------------------------------------------#
 
+    #----------Evaluate Twitter RoBERTa------------#
     # Twitter RoBERTa
+    # Load test data:
+    print("Loading sst2 Test Data...")
     sst2 = load_dataset("glue", "sst2")["validation"]
+    print("sst2 Test Data Loaded!")
     if max_samples:
         sst2 = sst2.select(range(min(max_samples, len(sst2))))
     sst_texts = [x["sentence"] for x in sst2]
     sst_true = [x["label"] for x in sst2]
+    # Load model:
+    print("Loading Twitter RoBERTa Model...")
     tw_pipe = load_twitter_pipeline()
+    print("Twitter RoBERTa Model Loaded!")
+    print("Beginning Testing Model on Test Data...")
+    
     sst_preds = twitter_predict(sst_texts, tw_pipe)
     evaluate_singlelabel(sst_true, sst_preds, "Twitter RoBERTa", labels=[0, 1], target_names=["Negative", "Positive"])
+    
+    '''
+    sst_preds, sst_probs = twitter_predict_with_probs(sst_texts)
+    sst_probs = [[1 - p, p] for p in sst_probs]
+    print("Model Testing Finished!")
+    print("Evaluating TwitterRoBERTa Performance...")
+    evaluate_singlelabel(sst_true, sst_preds, "Twitter RoBERTa",
+                        labels=[0, 1], target_names=["Negative", "Positive"], probs=sst_probs)
+    plot_roc_curve(sst_true, sst_probs, "Twitter RoBERTa", labels=[0, 1])
+    '''
+    print("Twitter RoBERTa Evaluation Finished!")
+    #-------------------------------------------------------#
 
+    #----------Evaluate Yelp BERT------------#
     # Yelp BERT
+    print("Loading Yelp Reviews Dataset...")
     yelp_data = load_dataset("yelp_review_full", split="test[:1000]")
     if max_samples:
         yelp_data = yelp_data.select(range(min(max_samples, len(yelp_data))))
     yelp_texts = [x["text"] for x in yelp_data]
     yelp_true = [x["label"] + 1 for x in yelp_data]
+    print("Yelp Reviews Dataset Loaded!")
+    print("Loading Yelp BERT Model...")
     yelp_pipe = load_yelp_pipeline()
+    print("Yelp BERT Model Loaded!")
+    print("Beginning Testing Model on Test Data...")
     yelp_preds = yelp_predict(yelp_texts, yelp_pipe)
+    print("Model Testing Finished!")
 
+    print("Beginning Yelp BERT Performance Evaluation...")
     evaluate_singlelabel(yelp_true, yelp_preds, "Yelp BERT", labels=[1, 2, 3, 4, 5],
                          target_names=["1 Star", "2 Stars", "3 Stars", "4 Stars", "5 Stars"])
     evaluate_star_distance(yelp_true, yelp_preds, "Yelp BERT")
     evaluate_tolerance(yelp_true, yelp_preds, "Yelp BERT")
     plot_conf_matrix(yelp_true, yelp_preds, labels=[1, 2, 3, 4, 5], model_name="Yelp BERT")
+    print("Yelp BERT Evaluation Finished!")
+    #-------------------------------------------------------#
 
     export_report(results)
 
