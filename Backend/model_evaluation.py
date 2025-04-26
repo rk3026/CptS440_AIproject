@@ -102,22 +102,26 @@ def yelp_predict(texts, pipe):
 def t5_predict_with_probs(texts, label_names, model, tokenizer):
     """
     Predicts the labels with probabilities using the T5 model.
-    Returns the predicted labels and their associated probabilities.
+    Returns the predicted labels and a binary matrix of label probabilities.
     """
     preds = []
-    probs = []
+    binary_probs = []
+
     for text in tqdm(texts, desc="T5 Predicting with probabilities..."):
         input_text = "classify sentiment: " + text
         input_ids = tokenizer(input_text, return_tensors="pt", padding=True, truncation=True, max_length=512).input_ids
         with torch.no_grad():
             output_ids = model.generate(input_ids, max_length=50, num_beams=1, eos_token_id=tokenizer.eos_token_id)
         decoded = tokenizer.decode(output_ids[0], skip_special_tokens=True)
-        # Extract labels and their corresponding probabilities from the output
         predicted_labels = [label.strip() for label in decoded.split(',') if label.strip() in label_names]
-        pred_probs = [1.0] * len(predicted_labels)  # T5 doesn't directly output probabilities, so we set them as 1.0 for simplicity
         preds.append(predicted_labels)
-        probs.append(pred_probs)
-    return preds, probs
+
+        # Create a binary probability vector (1.0 if predicted, else 0.0)
+        label_probs = [1.0 if label in predicted_labels else 0.0 for label in label_names]
+        binary_probs.append(label_probs)
+
+    return preds, binary_probs
+
 
 
 def roberta_goemotions_predict_with_probs(texts, label_names, pipe, threshold=0.5):
@@ -192,10 +196,23 @@ def record_result(model_name, metrics):
             return
     results.append({"Model": model_name, **metrics})
 
-def evaluate_multilabel(true_labels, pred_labels, label_names, name):
+def evaluate_multilabel(true_labels, pred_labels, label_names, name, probs=None):
     mlb = MultiLabelBinarizer(classes=label_names)
     y_true = mlb.fit_transform(true_labels)
     y_pred = mlb.transform(pred_labels)
+    
+    # Calculate ROC and AUC if probabilities are available
+    if probs is not None:
+        probs = np.array(probs)
+        roc_auc_values = []
+        for i in range(len(label_names)):
+            fpr, tpr, _ = roc_curve(y_true[:, i], probs[:, i])
+            auc_value = auc(fpr, tpr)
+            roc_auc_values.append(auc_value)
+        mean_auc = np.mean(roc_auc_values)  # Mean AUC across all labels
+    else:
+        mean_auc = None
+
     metrics = {
         "Micro F1": f1_score(y_true, y_pred, average='micro'),
         "Macro F1": f1_score(y_true, y_pred, average='macro'),
@@ -204,12 +221,14 @@ def evaluate_multilabel(true_labels, pred_labels, label_names, name):
         "Standard Deviation": np.std(y_true - y_pred),
         "MAE": mean_absolute_error(y_true, y_pred),
         "Exact Match": sum(all(t == p for t, p in zip(true, pred)) for true, pred in zip(y_true, y_pred)) / len(y_true),
-        "Within ±1": sum(all(abs(t - p) <= 1 for t, p in zip(true, pred)) for true, pred in zip(y_true, y_pred)) / len(y_true)
+        "Within ±1": sum(all(abs(t - p) <= 1 for t, p in zip(true, pred)) for true, pred in zip(y_true, y_pred)) / len(y_true),
+        "Mean AUC": mean_auc  # Include the mean AUC
     }
 
     print_metrics(name, metrics)
     print_report(name, classification_report(y_true, y_pred, target_names=label_names))
     record_result(name, metrics)
+
 
 
 def evaluate_singlelabel(true, pred, model_name, labels=None, target_names=None, probs=None):
@@ -221,12 +240,19 @@ def evaluate_singlelabel(true, pred, model_name, labels=None, target_names=None,
         "Standard Deviation": np.std(np.array(pred) - np.array(true)),
         "MAE": mean_absolute_error(true, pred),
         "Exact Match": sum(t == p for t, p in zip(true, pred)) / len(true),
-        "Within ±1": sum(abs(t - p) <= 1 for t, p in zip(true, pred)) / len(true)
+        "Within ±1": sum(abs(t - p) <= 1 for t, p in zip(true, pred)) / len(true),
     }
+
+    # Calculate ROC and AUC if probabilities are available
+    if probs is not None:
+        fpr, tpr, _ = roc_curve(true, probs)
+        auc_value = auc(fpr, tpr)
+        metrics["ROC AUC"] = auc_value
 
     print_metrics(model_name, metrics)
     print_report(model_name, classification_report(true, pred, labels=labels, target_names=target_names))
     record_result(model_name, metrics)
+
 
 def plot_conf_matrix(true, pred, labels, model_name, evaluation_dir="evaluation"):
     os.makedirs(evaluation_dir, exist_ok=True)
@@ -314,7 +340,6 @@ def print_report(name, report):
 
 # ========================= MAIN ========================= #
 
-
 def main(max_samples=None):
     #----------Evaluate T5Emotions------------#
     # Load GoEmotions test data
@@ -333,9 +358,9 @@ def main(max_samples=None):
     print("Loading T5Emotions Model...")
     t5_model, t5_tokenizer = load_t5_emotions_model()
     print("T5Emotions Model Loaded!")
-    t5_preds = t5_predict(texts, label_names, t5_model, t5_tokenizer)
+    t5_preds, t5_probs = t5_predict_with_probs(texts, label_names, t5_model, t5_tokenizer)
     print("Evaluating T5Emotions...")
-    evaluate_multilabel(true_labels, t5_preds, label_names, "T5Emotions")
+    evaluate_multilabel(true_labels, t5_preds, label_names, "T5Emotions", probs=t5_probs)
     plot_conf_matrix(true_labels, t5_preds, label_names, model_name="T5Emotions")
     print("T5Emotions Evaluation Complete!")
     #-------------------------------------------------------#
@@ -345,10 +370,10 @@ def main(max_samples=None):
     print("Loading SamLowe/roberta-base-go_emotions Model...")
     go_pipe = load_goemotions_pipeline()
     print("SamLowe/roberta-base-go_emotions Model Loaded!")
-    go_preds = roberta_goemotions_predict(texts, label_names, go_pipe)
+    go_preds, go_probs = roberta_goemotions_predict_with_probs(texts, label_names, go_pipe)
     print("Evaluating SamLowe/roberta-base-go_emotions...")
-    evaluate_multilabel(true_labels, go_preds, label_names, "SamLowe/roberta-base-go_emotions")
-    plot_conf_matrix(true_labels, go_preds, label_names, model_name="SamLowe/roberta-base-go_emotions")
+    evaluate_multilabel(true_labels, go_preds, label_names, "SamLowe/roberta-base-go_emotions", probs=go_probs)
+    plot_conf_matrix(true_labels, go_preds, label_names, model_name="SamLowe/roberta-base-go_emotions", probs=go_probs)
     print("SamLowe/roberta-base-go_emotions Evaluation Complete!")
     #-------------------------------------------------------#
 
@@ -367,10 +392,10 @@ def main(max_samples=None):
     tw_pipe = load_twitter_pipeline()
     print("Twitter RoBERTa Model Loaded!")
     print("Beginning Testing Model on Test Data...")
-    
-    sst_preds = twitter_predict(sst_texts, tw_pipe)
-    evaluate_singlelabel(sst_true, sst_preds, "Twitter RoBERTa", labels=[0, 1], target_names=["Negative", "Positive"])
-    plot_conf_matrix(sst_true, sst_preds, labels=[0, 1], model_name="Twitter RoBERTa")
+
+    sst_preds, sst_probs = twitter_predict_with_probs(sst_texts)
+    evaluate_singlelabel(sst_true, sst_preds, "Twitter RoBERTa", labels=[0, 1], target_names=["Negative", "Positive"], probs=sst_probs)
+    plot_conf_matrix(sst_true, sst_preds, labels=[0, 1], model_name="Twitter RoBERTa", probs=sst_probs)
     print("Twitter RoBERTa Evaluation Finished!")
     #-------------------------------------------------------#
 
@@ -387,19 +412,18 @@ def main(max_samples=None):
     yelp_pipe = load_yelp_pipeline()
     print("Yelp BERT Model Loaded!")
     print("Beginning Testing Model on Test Data...")
-    yelp_preds = yelp_predict(yelp_texts, yelp_pipe)
+    yelp_preds, yelp_probs = yelp_predict_with_probs(yelp_texts, yelp_pipe)
     print("Model Testing Finished!")
 
     print("Beginning Yelp BERT Performance Evaluation...")
     evaluate_singlelabel(yelp_true, yelp_preds, "Yelp BERT", labels=[1, 2, 3, 4, 5],
-                         target_names=["1 Star", "2 Stars", "3 Stars", "4 Stars", "5 Stars"])
-    plot_conf_matrix(yelp_true, yelp_preds, labels=[1, 2, 3, 4, 5], model_name="Yelp BERT")
+                         target_names=["1 Star", "2 Stars", "3 Stars", "4 Stars", "5 Stars"], probs=yelp_probs)
+    plot_conf_matrix(yelp_true, yelp_preds, labels=[1, 2, 3, 4, 5], model_name="Yelp BERT", probs=yelp_probs)
     print("Yelp BERT Evaluation Finished!")
     #-------------------------------------------------------#
 
     export_report(results)
-
-
+    
 
 if __name__ == "__main__":
     main(max_samples=100)
