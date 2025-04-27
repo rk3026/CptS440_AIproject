@@ -7,12 +7,10 @@ dash
 plotly
 ipykernel
 jupyter
-transformers #for Hugging Face Models
 dash_bootstrap_components
 python-dotenv
 
 #fine-tuning:
-datasets
 evaluate
 accelerate
 sentencepiece
