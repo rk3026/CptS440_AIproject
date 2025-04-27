@@ -2,7 +2,10 @@
 # **CptS440_AIProject**
 
 ## Overview
-This project focuses on **Sentiment Analysis** of text data. The goal is to classify text into sentiment categories (positive, negative, neutral, etc.) using various machine learning models, including pre-trained models for social media content and review platforms (e.g., Twitter and Yelp).
+This project focuses on **Sentiment Analysis** of text data.
+
+It contains a web application where users can provide text/data to run sentiment analysis on. The web application will process the text data provided and then output a summary of the overall sentiment of that data through various graphical elements.
+Behind the web app, we utilize various pretrained/fine-tuned transformer-based AI models to process text data.
 
 ## Setup Instructions
 
@@ -19,7 +22,7 @@ cd CptS440_AIproject
 ```
 
 ### 2. Create Virtual Environment
-Run the appropriate setup script based on your operating system:
+Run the appropriate setup script from the `/scripts` folder based on your operating system:
 
 - **For Windows:**
   ```bash
@@ -34,4 +37,13 @@ Run the appropriate setup script based on your operating system:
 This will create a **virtual environment** with all the necessary dependencies listed in `requirements.txt`.
 
 ### 3. Running the Project
-After setup, you can run the **Jupyter notebooks** or Python scripts to analyze sentiment from various datasets.
+
+#### Web App
+To launch the web application, navigate to the `web_app` folder and run `app.py`. The app will start on a local port — open your browser and go to the displayed address to access it.
+
+#### Model Evaluation
+To evaluate the AI models, go to the `backend` folder and run `model_evaluation.py`. This will generate multiple PDFs and images inside the `evaluation` folder.
+
+#### Other
+Additional Jupyter notebooks used for testing are available in the repository. You can run them after completing the environment setup.
+
