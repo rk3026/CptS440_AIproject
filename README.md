@@ -38,7 +38,7 @@ This will create a **virtual environment** with all the necessary dependencies l
 
 ### 3. Running the Project
 Download the Yelp Academic Dataset and place in the data folder: https://business.yelp.com/data/resources/open-dataset/
-We also need to have the t5-emotions model for the web app to run. To get this model, run the T5Finetune.py file.
+We also need to have the t5-emotions model for the web app to run. To get this model, run the T5Finetune.py file, or download a version here: https://www.dropbox.com/scl/fi/1zavrwt2p2iks8uofz2jc/model.safetensors?rlkey=vtgs69mbrx571e9zn4haampiw&st=97aqoh3q&dl=0
 
 #### Web App
 To launch the web application, navigate to the `web_app` folder and run `app.py`. The app will start on a local port — open your browser and go to the displayed address to access it.
