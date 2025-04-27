@@ -21,8 +21,12 @@ Then navigate to the folder:
 cd CptS440_AIproject
 ```
 
-### 2. Create Virtual Environment
-Run the appropriate setup script from the `/scripts` folder based on your operating system:
+### 2. Install Reqirements
+You can pip install all requirements in requirements.txt:
+  ```bash
+  pip install -r requirements.txt
+  ```
+You can also install all the requirements in a virtual environment by running the appropriate setup script from the `/scripts` folder based on your operating system:
 
 - **For Windows:**
   ```bash
