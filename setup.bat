@@ -22,3 +22,4 @@ echo Registering Jupyter kernel...
 python -m ipykernel install --user --name=venv --display-name "Python (venv)"
 
 echo Setup complete! Virtual environment is ready.
+pause
