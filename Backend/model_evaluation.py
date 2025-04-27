@@ -460,4 +460,4 @@ def main(max_samples=None):
     export_report(results)
 
 if __name__ == "__main__":
-    main(max_samples=100)
+    main()
