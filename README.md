@@ -37,19 +37,29 @@ Run the appropriate setup script from the `/scripts` folder based on your operat
 This will create a **virtual environment** with all the necessary dependencies listed in `requirements.txt`.
 
 ### 3. Running the Project
-Here is a video demo of running the project: https://youtu.be/S6UZpd5heYI
 
-Required Files:
-Download the Yelp Academic Dataset and place in the data folder: https://business.yelp.com/data/resources/open-dataset/
+Here's a video demo showing how to run the project: [https://youtu.be/S6UZpd5heYI](https://youtu.be/S6UZpd5heYI)
 
-We also need to have the t5-emotions model for the web app to run. To get this model, run the T5Finetune.py file, or download a version here: https://www.dropbox.com/scl/fi/1zavrwt2p2iks8uofz2jc/model.safetensors?rlkey=vtgs69mbrx571e9zn4haampiw&st=97aqoh3q&dl=0
+#### Required Files
+- **Yelp Academic Dataset**: Download it [here](https://business.yelp.com/data/resources/open-dataset/) and place it in the `data` folder.
+- **t5-emotions Model**:  
+  To run the web app, you'll need the `t5-emotions` model. You can either:
+  - Fine-tune it yourself by running `T5Finetune.py`, or
+  - Download a pre-trained version [here](https://www.dropbox.com/scl/fi/1zavrwt2p2iks8uofz2jc/model.safetensors?rlkey=vtgs69mbrx571e9zn4haampiw&st=97aqoh3q&dl=0).
 
 #### Web App
-To launch the web application, navigate to the `web_app` folder and run `app.py`. The app will start on a local port — open your browser and go to the displayed address to access it.
+To launch the web application:
+1. Navigate to the `web_app` folder.
+2. Run `app.py`.
+3. The app will start on a local server — open your browser and go to the address shown in the terminal.
 
 #### Model Evaluation
-To evaluate the AI models, go to the `backend` folder and run `model_evaluation.py`. This will generate multiple PDFs and images inside the `evaluation` folder.
+To evaluate the AI models:
+1. Go to the `backend` folder.
+2. Run `model_evaluation.py`.
+
+This will generate several PDFs and images inside the `evaluation` folder.
 
 #### Other
-Additional Jupyter notebooks used for testing are available in the repository. You can run them after completing the environment setup.
+Additional Jupyter notebooks for testing are included in the repository. You can run them after setting up the environment.
 
