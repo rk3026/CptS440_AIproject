@@ -1,16 +1,21 @@
 numpy<2.0
 pandas
 scikit-learn
+torch
+torchtext
+tensorboard
 pgmpy
 pomegranate
 dash
 plotly
 ipykernel
 jupyter
+transformers #for Hugging Face Models
 dash_bootstrap_components
 python-dotenv
 
 #fine-tuning:
+datasets
 evaluate
 accelerate
 sentencepiece
